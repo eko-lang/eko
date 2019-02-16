@@ -1,0 +1,11 @@
+[package]
+name = "eko"
+version = "0.0.3"
+edition = "2018"
+
+authors = ["Ravern Koh <ravernkoh@gmail.com>"]
+description = "Compiler and engine"
+readme = "README.md"
+license = "MIT"
+
+[dependencies]
