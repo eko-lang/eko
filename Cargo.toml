@@ -9,3 +9,5 @@ readme = "README.md"
 license = "MIT"
 
 [dependencies]
+eko-gc = { git = "https://github.com/eko-lang/eko-gc" }
+eko-gc-derive = { git = "https://github.com/eko-lang/eko-gc" }
