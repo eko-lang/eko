@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use eko_gc::{Gc, RefCell};
 
-use crate::ident::Ident;
+use super::ident::Ident;
 
 #[derive(Trace)]
 pub struct Mod<'gc>(Gc<'gc, RefCell<'gc, ModData<'gc>>>);

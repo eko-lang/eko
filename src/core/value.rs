@@ -2,8 +2,8 @@ use std::collections::BTreeMap;
 
 use eko_gc::{Arena, Gc, RefCell};
 
-use crate::ident::Ident;
-use crate::typ;
+use super::ident::Ident;
+use super::typ;
 
 #[derive(Clone, Trace)]
 pub enum Value<'gc> {
