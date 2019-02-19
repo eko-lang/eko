@@ -23,10 +23,6 @@ pub struct String<'gc>(Gc<'gc, RefCell<'gc, std::string::String>>);
 pub struct Tuple<'gc>(Gc<'gc, RefCell<'gc, TupleData<'gc>>>);
 
 impl<'gc> Tuple<'gc> {
-    pub fn new(arena: &Arena<'gc>, fields: Vec<Value<'gc>>) -> Tuple<'gc> {
-        Tuple(Gc::new(arena, RefCell::new(arena, TupleData { fields })))
-    }
-
     pub fn set_field(&self, field: u8, value: Value<'gc>) -> bool {
         self.0.borrow_mut().set_field(field, value)
     }
@@ -60,24 +56,6 @@ impl<'gc> TupleData<'gc> {
 pub struct Struct<'gc>(Gc<'gc, RefCell<'gc, StructData<'gc>>>);
 
 impl<'gc> Struct<'gc> {
-    pub fn new(arena: &Arena<'gc>, typ: typ::Struct<'gc>) -> Struct<'gc> {
-        let proto = match &typ.0.borrow().proto {
-            typ::StructProto::Tuple(num_fields) => StructProto::new_tuple(*num_fields),
-            typ::StructProto::Map(map_data) => StructProto::new_map(
-                map_data
-                    .fields()
-                    .iter()
-                    .map(|(ident, _)| ident)
-                    .cloned()
-                    .collect(),
-            ),
-        };
-        Struct(Gc::new(
-            arena,
-            RefCell::new(arena, StructData { typ, proto }),
-        ))
-    }
-
     pub fn set_tuple_field(&self, field: u8, value: Value<'gc>) -> bool {
         self.0.borrow_mut().proto.set_tuple_field(field, value)
     }

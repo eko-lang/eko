@@ -1,26 +1,16 @@
 use std::collections::BTreeMap;
 
-use eko_gc::{Gc, RefCell};
+use eko_gc::{Gc, Ref, RefCell};
 
 use super::ident::Ident;
 
 #[derive(Trace)]
-pub struct Mod<'gc>(Gc<'gc, RefCell<'gc, ModData<'gc>>>);
-
-#[derive(Trace)]
-pub struct ModData<'gc> {
-    parent_module: Mod<'gc>,
-    child_modules: BTreeMap<Ident<'gc>, Mod<'gc>>,
-    structs: BTreeMap<Ident<'gc>, Struct<'gc>>,
-}
-
-#[derive(Trace)]
-pub struct Struct<'gc>(pub Gc<'gc, RefCell<'gc, StructData<'gc>>>);
+pub struct Struct<'gc>(Gc<'gc, RefCell<'gc, StructData<'gc>>>);
 
 #[derive(Trace)]
 pub struct StructData<'gc> {
     ident: Ident<'gc>,
-    pub proto: StructProto<'gc>,
+    proto: StructProto<'gc>,
     fns: BTreeMap<Ident<'gc>, Fn<'gc>>,
 }
 
@@ -50,12 +40,6 @@ pub struct MapData<'gc> {
     fields: BTreeMap<Ident<'gc>, ()>,
 }
 
-impl<'gc> MapData<'gc> {
-    pub fn fields(&self) -> &BTreeMap<Ident<'gc>, ()> {
-        &self.fields
-    }
-}
-
 #[derive(Trace)]
 pub struct Fn<'gc>(Gc<'gc, RefCell<'gc, FnData<'gc>>>);
 
@@ -64,7 +48,7 @@ pub struct FnData<'gc> {
     ident: Ident<'gc>,
     arity: u8,
     method: bool,
-    kind: FnProto,
+    proto: FnProto,
 }
 
 #[derive(Trace)]
