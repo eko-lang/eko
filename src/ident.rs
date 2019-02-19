@@ -1,6 +1,6 @@
 use eko_gc::{Arena, Gc};
 
-#[derive(Trace)]
+#[derive(Eq, Trace, Ord, PartialEq, PartialOrd)]
 pub struct Ident<'gc>(Gc<'gc, String>);
 
 impl<'gc> Ident<'gc> {
