@@ -15,12 +15,12 @@ pub struct ModData<'gc> {
 }
 
 #[derive(Trace)]
-pub struct Struct<'gc>(Gc<'gc, RefCell<'gc, StructData<'gc>>>);
+pub struct Struct<'gc>(pub Gc<'gc, RefCell<'gc, StructData<'gc>>>);
 
 #[derive(Trace)]
 pub struct StructData<'gc> {
     ident: Ident<'gc>,
-    proto: StructProto<'gc>,
+    pub proto: StructProto<'gc>,
     fns: BTreeMap<Ident<'gc>, Fn<'gc>>,
 }
 
@@ -48,6 +48,12 @@ pub enum StructProto<'gc> {
 
 pub struct MapData<'gc> {
     fields: BTreeMap<Ident<'gc>, ()>,
+}
+
+impl<'gc> MapData<'gc> {
+    pub fn fields(&self) -> &BTreeMap<Ident<'gc>, ()> {
+        &self.fields
+    }
 }
 
 #[derive(Trace)]
