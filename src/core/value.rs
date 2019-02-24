@@ -28,11 +28,11 @@ impl<'gc> Tuple<'gc> {
         Tuple(Gc::new(&arena, RefCell::new(&arena, TupleData { fields })))
     }
 
-    pub fn set_field(&self, field: u8, value: Value<'gc>) -> bool {
+    pub fn set_field(&self, field: u8, value: Value<'gc>) -> Result<'gc, ()> {
         self.0.borrow_mut().set_field(field, value)
     }
 
-    pub fn field(&self, field: u8) -> Option<Value<'gc>> {
+    pub fn field(&self, field: u8) -> Result<'gc, Value<'gc>> {
         self.0.borrow().field(field)
     }
 }
@@ -43,17 +43,24 @@ pub struct TupleData<'gc> {
 }
 
 impl<'gc> TupleData<'gc> {
-    fn set_field(&mut self, field: u8, value: Value<'gc>) -> bool {
+    fn set_field(&mut self, field: u8, value: Value<'gc>) -> Result<'gc, ()> {
         if let Some(field) = self.fields.get_mut(field as usize) {
             *field = value;
-            true
+            Ok(())
         } else {
-            false
+            Err(Error::InvalidField {
+                field: Ident::new_number(field),
+            })
         }
     }
 
-    fn field(&self, field: u8) -> Option<Value<'gc>> {
-        self.fields.get(field as usize).cloned()
+    fn field(&self, field: u8) -> Result<'gc, Value<'gc>> {
+        self.fields
+            .get(field as usize)
+            .cloned()
+            .ok_or_else(|| Error::InvalidField {
+                field: Ident::new_number(field),
+            })
     }
 }
 
@@ -70,7 +77,7 @@ impl<'gc> Struct<'gc> {
             typ::StructProto::Tuple(num_fields) => {
                 let data = StructData {
                     typ: typ.clone(),
-                    proto: StructProto::new_tuple(&arena, num_fields, fields)?,
+                    proto: StructProto::new_tuple(num_fields, fields)?,
                 };
                 Ok(Struct(Gc::new(&arena, RefCell::new(&arena, data))))
             }
@@ -101,19 +108,19 @@ impl<'gc> Struct<'gc> {
         }
     }
 
-    pub fn set_tuple_field(&self, field: u8, value: Value<'gc>) -> bool {
+    pub fn set_tuple_field(&self, field: u8, value: Value<'gc>) -> Result<'gc, ()> {
         self.0.borrow_mut().proto.set_tuple_field(field, value)
     }
 
-    pub fn set_map_field(&self, field: Ident<'gc>, value: Value<'gc>) -> bool {
+    pub fn set_map_field(&self, field: Ident<'gc>, value: Value<'gc>) -> Result<'gc, ()> {
         self.0.borrow_mut().proto.set_map_field(field, value)
     }
 
-    pub fn tuple_field(&self, field: u8) -> Option<Value<'gc>> {
+    pub fn tuple_field(&self, field: u8) -> Result<'gc, Value<'gc>> {
         self.0.borrow().proto.tuple_field(field)
     }
 
-    pub fn map_field(&self, field: &Ident<'gc>) -> Option<Value<'gc>> {
+    pub fn map_field(&self, field: Ident<'gc>) -> Result<'gc, Value<'gc>> {
         self.0.borrow().proto.map_field(field)
     }
 }
@@ -128,19 +135,19 @@ pub struct StructData<'gc> {
 pub struct Enum<'gc>(Gc<'gc, RefCell<'gc, EnumData<'gc>>>);
 
 impl<'gc> Enum<'gc> {
-    pub fn set_tuple_field(&self, field: u8, value: Value<'gc>) -> bool {
+    pub fn set_tuple_field(&self, field: u8, value: Value<'gc>) -> Result<'gc, ()> {
         self.0.borrow_mut().proto.set_tuple_field(field, value)
     }
 
-    pub fn set_map_field(&self, field: Ident<'gc>, value: Value<'gc>) -> bool {
+    pub fn set_map_field(&self, field: Ident<'gc>, value: Value<'gc>) -> Result<'gc, ()> {
         self.0.borrow_mut().proto.set_map_field(field, value)
     }
 
-    pub fn tuple_field(&self, field: u8) -> Option<Value<'gc>> {
+    pub fn tuple_field(&self, field: u8) -> Result<'gc, Value<'gc>> {
         self.0.borrow().proto.tuple_field(field)
     }
 
-    pub fn map_field(&self, field: &Ident<'gc>) -> Option<Value<'gc>> {
+    pub fn map_field(&self, field: Ident<'gc>) -> Result<'gc, Value<'gc>> {
         self.0.borrow().proto.map_field(field)
     }
 }
@@ -159,18 +166,14 @@ pub enum StructProto<'gc> {
 }
 
 impl<'gc> StructProto<'gc> {
-    fn new_tuple(
-        arena: &Arena<'gc>,
-        num_fields: u8,
-        fields: Vec<Value<'gc>>,
-    ) -> Result<'gc, StructProto<'gc>> {
-        if num_fields as usize > fields.len() {
+    fn new_tuple(num_fields: u8, fields: Vec<Value<'gc>>) -> Result<'gc, StructProto<'gc>> {
+        if num_fields > fields.len() as u8 {
             Err(Error::MissingField {
-                field: Ident::new(&arena, format!("{}", fields.len())),
+                field: Ident::new_number(fields.len() as u8),
             })
-        } else if (num_fields as usize) < fields.len() {
+        } else if num_fields < fields.len() as u8 {
             Err(Error::InvalidField {
-                field: Ident::new(&arena, format!("{}", num_fields)),
+                field: Ident::new_number(num_fields),
             })
         } else {
             Ok(StructProto::Tuple(TupleData { fields }))
@@ -202,35 +205,43 @@ impl<'gc> StructProto<'gc> {
         Ok(StructProto::Map(MapData { fields }))
     }
 
-    fn set_tuple_field(&mut self, field: u8, value: Value<'gc>) -> bool {
-        if let StructProto::Tuple(tuple) = self {
-            tuple.set_field(field, value)
-        } else {
-            false
+    fn set_tuple_field(&mut self, field: u8, value: Value<'gc>) -> Result<'gc, ()> {
+        match self {
+            StructProto::Tuple(tuple_data) => tuple_data.set_field(field, value),
+            StructProto::Map(_) => Err(Error::InvalidKind {
+                expected: Kind::Map,
+                received: Kind::Tuple,
+            }),
         }
     }
 
-    fn set_map_field(&mut self, field: Ident<'gc>, value: Value<'gc>) -> bool {
-        if let StructProto::Map(map) = self {
-            map.set_field(field, value)
-        } else {
-            false
+    fn set_map_field(&mut self, field: Ident<'gc>, value: Value<'gc>) -> Result<'gc, ()> {
+        match self {
+            StructProto::Tuple(_) => Err(Error::InvalidKind {
+                expected: Kind::Tuple,
+                received: Kind::Map,
+            }),
+            StructProto::Map(map_data) => map_data.set_field(field, value),
         }
     }
 
-    fn tuple_field(&self, field: u8) -> Option<Value<'gc>> {
-        if let StructProto::Tuple(tuple) = self {
-            tuple.field(field)
-        } else {
-            None
+    fn tuple_field(&self, field: u8) -> Result<'gc, Value<'gc>> {
+        match self {
+            StructProto::Tuple(tuple_data) => tuple_data.field(field),
+            StructProto::Map(_) => Err(Error::InvalidKind {
+                expected: Kind::Map,
+                received: Kind::Tuple,
+            }),
         }
     }
 
-    fn map_field(&self, field: &Ident<'gc>) -> Option<Value<'gc>> {
-        if let StructProto::Map(map) = self {
-            map.field(field)
-        } else {
-            None
+    fn map_field(&self, field: Ident<'gc>) -> Result<'gc, Value<'gc>> {
+        match self {
+            StructProto::Tuple(_) => Err(Error::InvalidKind {
+                expected: Kind::Tuple,
+                received: Kind::Map,
+            }),
+            StructProto::Map(map_data) => map_data.field(field),
         }
     }
 }
@@ -241,16 +252,19 @@ pub struct MapData<'gc> {
 }
 
 impl<'gc> MapData<'gc> {
-    pub fn set_field(&mut self, field: Ident<'gc>, value: Value<'gc>) -> bool {
+    pub fn set_field(&mut self, field: Ident<'gc>, value: Value<'gc>) -> Result<'gc, ()> {
         if self.fields.get(&field).is_some() {
             self.fields.insert(field, value);
-            true
+            Ok(())
         } else {
-            false
+            Err(Error::InvalidField { field })
         }
     }
 
-    pub fn field(&self, field: &Ident<'gc>) -> Option<Value<'gc>> {
-        self.fields.get(field).cloned()
+    pub fn field(&self, field: Ident<'gc>) -> Result<'gc, Value<'gc>> {
+        self.fields
+            .get(&field)
+            .cloned()
+            .ok_or_else(|| Error::InvalidField { field })
     }
 }
