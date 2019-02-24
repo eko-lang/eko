@@ -68,31 +68,36 @@ impl<'gc> Struct<'gc> {
     ) -> Result<'gc, Struct<'gc>> {
         match *typ.proto() {
             typ::StructProto::Tuple(num_fields) => {
-                if num_fields as usize > fields.len() {
-                    Err(Error::MissingField {
-                        field: Ident::new(&arena, format!("{}", fields.len())),
-                    })
-                } else if (num_fields as usize) < fields.len() {
-                    Err(Error::InvalidField {
-                        field: Ident::new(&arena, format!("{}", num_fields)),
-                    })
-                } else {
-                    Ok(Struct(Gc::new(
-                        &arena,
-                        RefCell::new(
-                            &arena,
-                            StructData {
-                                typ: typ.clone(),
-                                proto: StructProto::Tuple(TupleData { fields }),
-                            },
-                        ),
-                    )))
-                }
+                let data = StructData {
+                    typ: typ.clone(),
+                    proto: StructProto::new_tuple(&arena, num_fields, fields)?,
+                };
+                Ok(Struct(Gc::new(&arena, RefCell::new(&arena, data))))
             }
             typ::StructProto::Map(_) => Err(Error::InvalidKind {
                 expected: Kind::Tuple,
                 received: Kind::Map,
             }),
+        }
+    }
+
+    pub fn new_map(
+        arena: &Arena<'gc>,
+        typ: typ::Struct<'gc>,
+        fields: BTreeMap<Ident<'gc>, Value<'gc>>,
+    ) -> Result<'gc, Struct<'gc>> {
+        match *typ.proto() {
+            typ::StructProto::Tuple(_) => Err(Error::InvalidKind {
+                expected: Kind::Map,
+                received: Kind::Tuple,
+            }),
+            typ::StructProto::Map(ref map_data) => {
+                let data = StructData {
+                    typ: typ.clone(),
+                    proto: StructProto::new_map(&map_data, fields)?,
+                };
+                Ok(Struct(Gc::new(&arena, RefCell::new(&arena, data))))
+            }
         }
     }
 
@@ -142,6 +147,7 @@ impl<'gc> Enum<'gc> {
 
 #[derive(Trace)]
 pub struct EnumData<'gc> {
+    typ: typ::Enum<'gc>,
     variant: u8,
     proto: StructProto<'gc>,
 }
@@ -153,17 +159,47 @@ pub enum StructProto<'gc> {
 }
 
 impl<'gc> StructProto<'gc> {
-    fn new_tuple(num_fields: u8) -> StructProto<'gc> {
-        let fields = vec![Value::Boolean(false); num_fields as usize];
-        StructProto::Tuple(TupleData { fields })
+    fn new_tuple(
+        arena: &Arena<'gc>,
+        num_fields: u8,
+        fields: Vec<Value<'gc>>,
+    ) -> Result<'gc, StructProto<'gc>> {
+        if num_fields as usize > fields.len() {
+            Err(Error::MissingField {
+                field: Ident::new(&arena, format!("{}", fields.len())),
+            })
+        } else if (num_fields as usize) < fields.len() {
+            Err(Error::InvalidField {
+                field: Ident::new(&arena, format!("{}", num_fields)),
+            })
+        } else {
+            Ok(StructProto::Tuple(TupleData { fields }))
+        }
     }
 
-    fn new_map(idents: Vec<Ident<'gc>>) -> StructProto<'gc> {
-        let mut fields = BTreeMap::new();
-        for ident in idents {
-            fields.insert(ident, Value::Boolean(false));
+    fn new_map(
+        map_data: &typ::MapData<'gc>,
+        fields: BTreeMap<Ident<'gc>, Value<'gc>>,
+    ) -> Result<'gc, StructProto<'gc>> {
+        let map_data_fields = map_data.fields();
+
+        for (ident, _) in map_data_fields.iter() {
+            if fields.get(ident).is_none() {
+                return Err(Error::MissingField {
+                    field: ident.clone(),
+                });
+            }
         }
-        StructProto::Map(MapData { fields })
+
+        for (ident, _) in fields.iter() {
+            if map_data_fields.get(ident).is_none() {
+                return Err(Error::InvalidField {
+                    field: ident.clone(),
+                });
+            }
+        }
+
+        Ok(StructProto::Map(MapData { fields }))
     }
 
     fn set_tuple_field(&mut self, field: u8, value: Value<'gc>) -> bool {

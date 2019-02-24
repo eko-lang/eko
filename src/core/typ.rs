@@ -54,6 +54,12 @@ pub struct MapData<'gc> {
     fields: BTreeMap<Ident<'gc>, ()>,
 }
 
+impl<'gc> MapData<'gc> {
+    pub fn fields(&self) -> &BTreeMap<Ident<'gc>, ()> {
+        &self.fields
+    }
+}
+
 #[derive(Debug)]
 pub enum Kind {
     Tuple,
