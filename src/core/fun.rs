@@ -15,7 +15,7 @@ pub struct FnData<'gc> {
 
 #[derive(Trace)]
 pub enum FnProto {
-    Internal(Box<Chunk>),
+    Chunk(Box<Chunk>),
     External(Box<std::ops::FnOnce()>),
 }
 
