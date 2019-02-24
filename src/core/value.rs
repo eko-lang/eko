@@ -2,8 +2,9 @@ use std::collections::BTreeMap;
 
 use eko_gc::{Arena, Gc, RefCell};
 
+use super::error::{Error, Result};
 use super::ident::Ident;
-use super::typ;
+use super::typ::{self, Kind};
 
 #[derive(Clone, Trace)]
 pub enum Value<'gc> {
@@ -23,6 +24,10 @@ pub struct String<'gc>(Gc<'gc, RefCell<'gc, std::string::String>>);
 pub struct Tuple<'gc>(Gc<'gc, RefCell<'gc, TupleData<'gc>>>);
 
 impl<'gc> Tuple<'gc> {
+    pub fn new(arena: &Arena<'gc>, fields: Vec<Value<'gc>>) -> Tuple<'gc> {
+        Tuple(Gc::new(&arena, RefCell::new(&arena, TupleData { fields })))
+    }
+
     pub fn set_field(&self, field: u8, value: Value<'gc>) -> bool {
         self.0.borrow_mut().set_field(field, value)
     }
@@ -38,7 +43,7 @@ pub struct TupleData<'gc> {
 }
 
 impl<'gc> TupleData<'gc> {
-    pub fn set_field(&mut self, field: u8, value: Value<'gc>) -> bool {
+    fn set_field(&mut self, field: u8, value: Value<'gc>) -> bool {
         if let Some(field) = self.fields.get_mut(field as usize) {
             *field = value;
             true
@@ -47,7 +52,7 @@ impl<'gc> TupleData<'gc> {
         }
     }
 
-    pub fn field(&self, field: u8) -> Option<Value<'gc>> {
+    fn field(&self, field: u8) -> Option<Value<'gc>> {
         self.fields.get(field as usize).cloned()
     }
 }
@@ -56,6 +61,41 @@ impl<'gc> TupleData<'gc> {
 pub struct Struct<'gc>(Gc<'gc, RefCell<'gc, StructData<'gc>>>);
 
 impl<'gc> Struct<'gc> {
+    pub fn new_tuple(
+        arena: &Arena<'gc>,
+        typ: typ::Struct<'gc>,
+        fields: Vec<Value<'gc>>,
+    ) -> Result<'gc, Struct<'gc>> {
+        match *typ.proto() {
+            typ::StructProto::Tuple(num_fields) => {
+                if num_fields as usize > fields.len() {
+                    Err(Error::MissingField {
+                        field: Ident::new(&arena, format!("{}", fields.len())),
+                    })
+                } else if (num_fields as usize) < fields.len() {
+                    Err(Error::InvalidField {
+                        field: Ident::new(&arena, format!("{}", num_fields)),
+                    })
+                } else {
+                    Ok(Struct(Gc::new(
+                        &arena,
+                        RefCell::new(
+                            &arena,
+                            StructData {
+                                typ: typ.clone(),
+                                proto: StructProto::Tuple(TupleData { fields }),
+                            },
+                        ),
+                    )))
+                }
+            }
+            typ::StructProto::Map(_) => Err(Error::InvalidKind {
+                expected: Kind::Tuple,
+                received: Kind::Map,
+            }),
+        }
+    }
+
     pub fn set_tuple_field(&self, field: u8, value: Value<'gc>) -> bool {
         self.0.borrow_mut().proto.set_tuple_field(field, value)
     }

@@ -1,11 +1,25 @@
 use std::collections::BTreeMap;
+use std::fmt;
 
 use eko_gc::{Gc, Ref, RefCell};
 
+use super::fun::Fn;
 use super::ident::Ident;
 
 #[derive(Trace)]
+pub enum Type<'gc> {
+    Struct(Struct<'gc>),
+    Enum(Enum<'gc>),
+}
+
+#[derive(Clone, Trace)]
 pub struct Struct<'gc>(Gc<'gc, RefCell<'gc, StructData<'gc>>>);
+
+impl<'gc> Struct<'gc> {
+    pub fn proto(&self) -> Ref<StructProto<'gc>> {
+        Ref::map(self.0.borrow(), |data| &data.proto)
+    }
+}
 
 #[derive(Trace)]
 pub struct StructData<'gc> {
@@ -40,26 +54,17 @@ pub struct MapData<'gc> {
     fields: BTreeMap<Ident<'gc>, ()>,
 }
 
-#[derive(Trace)]
-pub struct Fn<'gc>(Gc<'gc, RefCell<'gc, FnData<'gc>>>);
-
-#[derive(Trace)]
-pub struct FnData<'gc> {
-    ident: Ident<'gc>,
-    arity: u8,
-    method: bool,
-    proto: FnProto,
+#[derive(Debug)]
+pub enum Kind {
+    Tuple,
+    Map,
 }
 
-#[derive(Trace)]
-pub enum FnProto {
-    Internal(Box<Chunk>),
-    External(Box<std::ops::FnOnce()>),
+impl fmt::Display for Kind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Kind::Tuple => write!(f, "tuple"),
+            Kind::Map => write!(f, "map"),
+        }
+    }
 }
-
-#[derive(Trace)]
-pub struct Chunk {
-    instrs: Vec<Instr>,
-}
-
-pub enum Instr {}
