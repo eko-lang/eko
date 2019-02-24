@@ -21,8 +21,8 @@ impl<'gc> Ident<'gc> {
 impl<'gc> fmt::Display for Ident<'gc> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Ident::String(string) => write!(f, "{}", &*self),
-            Ident::Number(number) => write!(f, "{}", &*self),
+            Ident::String(string) => write!(f, "{}", &**string),
+            Ident::Number(number) => write!(f, "{}", number),
         }
     }
 }
