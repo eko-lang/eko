@@ -1,12 +1,15 @@
 use eko_gc::{Gc, RefCell};
 
 use super::ident::Ident;
+use super::modu::Mod;
+use super::value::Value;
 
 #[derive(Trace)]
-pub struct Fn<'gc>(Gc<'gc, RefCell<'gc, FnData<'gc>>>);
+pub struct Fn<'gc>(Gc<'gc, FnData<'gc>>);
 
 #[derive(Trace)]
 pub struct FnData<'gc> {
+    modu: Mod<'gc>,
     ident: Ident<'gc>,
     arity: u8,
     method: bool,
@@ -21,6 +24,7 @@ pub enum FnProto {
 
 #[derive(Trace)]
 pub struct Chunk {
+    vars_len: usize,
     instrs: Vec<Instr>,
 }
 

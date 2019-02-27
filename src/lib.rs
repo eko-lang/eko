@@ -4,3 +4,4 @@ extern crate eko_gc_derive;
 extern crate err_derive;
 
 pub mod core;
+pub mod engine;

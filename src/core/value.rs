@@ -3,7 +3,9 @@ use std::collections::BTreeMap;
 use eko_gc::{Arena, Gc, RefCell};
 
 use super::error::{Error, Result};
+use super::fun::FnData;
 use super::ident::Ident;
+use super::scope::CapturedScope;
 use super::typ::{self, Kind};
 
 #[derive(Clone, Trace)]
@@ -15,6 +17,7 @@ pub enum Value<'gc> {
     Tuple(Tuple<'gc>),
     Struct(Struct<'gc>),
     Enum(Enum<'gc>),
+    Closure(Closure<'gc>),
 }
 
 #[derive(Clone, Trace)]
@@ -267,4 +270,13 @@ impl<'gc> MapData<'gc> {
             .cloned()
             .ok_or_else(|| Error::InvalidField { field })
     }
+}
+
+#[derive(Clone, Trace)]
+pub struct Closure<'gc>(Gc<'gc, ClosureData<'gc>>);
+
+#[derive(Trace)]
+pub struct ClosureData<'gc> {
+    scope: CapturedScope<'gc>,
+    data: FnData<'gc>,
 }
