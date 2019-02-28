@@ -1,4 +1,4 @@
-use eko_gc::Gc;
+use eko_gc::{Arena, Gc};
 
 use super::ident::Ident;
 use super::modu::Mod;
@@ -42,3 +42,38 @@ pub struct ChunkData {
 
 #[derive(Clone, Copy)]
 pub enum Instr {}
+
+// TODO: Move this into `compiler`.
+pub struct ChunkBuilder {
+    vars_len: usize,
+    instrs: Vec<Instr>,
+}
+
+impl ChunkBuilder {
+    pub fn new() -> ChunkBuilder {
+        ChunkBuilder {
+            vars_len: 0,
+            instrs: Vec::new(),
+        }
+    }
+
+    pub fn vars_len(mut self, vars_len: usize) -> ChunkBuilder {
+        self.vars_len = vars_len;
+        self
+    }
+
+    pub fn instr(mut self, instr: Instr) -> ChunkBuilder {
+        self.instrs.push(instr);
+        self
+    }
+
+    pub fn build<'gc>(self, arena: &Arena<'gc>) -> Chunk<'gc> {
+        Chunk(Gc::new(
+            arena,
+            ChunkData {
+                vars_len: self.vars_len,
+                instrs: self.instrs,
+            },
+        ))
+    }
+}

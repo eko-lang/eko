@@ -1,9 +1,9 @@
 pub use self::error::Error;
-pub use self::fun::{Chunk, Instr};
+pub use self::fun::{Chunk, ChunkBuilder, Instr};
 pub use self::ident::Ident;
 pub use self::modu::Mod;
 pub use self::scope::{CapturedScope, Scope};
-pub use self::value::Value;
+pub use self::value::{Closure, Value};
 
 pub mod error;
 pub mod fun;

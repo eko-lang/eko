@@ -15,9 +15,12 @@ impl<'gc> Scope<'gc> {
     }
 }
 
+#[derive(Clone, Trace)]
+pub struct CapturedScope<'gc>(Gc<'gc, RefCell<'gc, CapturedScopeData<'gc>>>);
+
 #[derive(Trace)]
-pub struct CapturedScope<'gc> {
-    parent: Option<Box<CapturedScope<'gc>>>,
+pub struct CapturedScopeData<'gc> {
+    parent_scope: Option<CapturedScope<'gc>>,
     vars_len: usize,
     scope: Scope<'gc>,
 }

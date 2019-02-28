@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use eko_gc::{Arena, Gc, RefCell};
 
 use super::error::{Error, Result};
-use super::fun::FnData;
+use super::fun::Fn;
 use super::ident::Ident;
 use super::scope::CapturedScope;
 use super::typ::{self, Kind};
@@ -275,8 +275,14 @@ impl<'gc> MapData<'gc> {
 #[derive(Clone, Trace)]
 pub struct Closure<'gc>(Gc<'gc, ClosureData<'gc>>);
 
+impl<'gc> Closure<'gc> {
+    pub fn captured_scope(&self) -> CapturedScope<'gc> {
+        self.0.captured_scope.clone()
+    }
+}
+
 #[derive(Trace)]
 pub struct ClosureData<'gc> {
-    scope: CapturedScope<'gc>,
-    data: FnData<'gc>,
+    captured_scope: CapturedScope<'gc>,
+    data: Fn<'gc>,
 }
