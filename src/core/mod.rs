@@ -1,4 +1,5 @@
 pub use self::error::Error;
+pub use self::fun::{Chunk, Instr};
 pub use self::ident::Ident;
 pub use self::modu::Mod;
 pub use self::scope::{CapturedScope, Scope};
