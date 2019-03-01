@@ -1,6 +1,7 @@
-use eko_gc::Arena;
+use eko_gc::{Arena, Gc, RefCell};
 
-use crate::core::{CapturedScope, Chunk, Instr, Scope};
+use crate::core::fun::{Chunk, Instr};
+use crate::core::value::Value;
 
 pub struct Frame<'gc> {
     cur_instr_index: usize,
@@ -13,7 +14,7 @@ impl<'gc> Frame<'gc> {
     pub fn new(arena: &Arena<'gc>, chunk: Chunk<'gc>) -> Frame<'gc> {
         Frame {
             cur_instr_index: 0,
-            local_scope: Scope::new(arena, chunk.vars_len()),
+            local_scope: Scope::new(arena, chunk.local_scope_len()),
             chunk,
             captured_scope: None,
         }
@@ -26,7 +27,7 @@ impl<'gc> Frame<'gc> {
     ) -> Frame<'gc> {
         Frame {
             cur_instr_index: 0,
-            local_scope: Scope::new(arena, chunk.vars_len()),
+            local_scope: Scope::new(arena, chunk.local_scope_len()),
             chunk,
             captured_scope: Some(captured_scope),
         }
@@ -39,5 +40,28 @@ impl<'gc> Frame<'gc> {
         } else {
             None
         }
+    }
+}
+
+#[derive(Clone, Trace)]
+pub struct CapturedScope<'gc>(Gc<'gc, RefCell<'gc, CapturedScopeData<'gc>>>);
+
+#[derive(Trace)]
+pub struct CapturedScopeData<'gc> {
+    parent_scope: Option<CapturedScope<'gc>>,
+    captured_scope_len: usize,
+    scope: Scope<'gc>,
+}
+
+#[derive(Trace)]
+pub struct Scope<'gc>(Gc<'gc, RefCell<'gc, Vec<Value<'gc>>>>);
+
+impl<'gc> Scope<'gc> {
+    pub fn new(arena: &Arena<'gc>, len: usize) -> Scope<'gc> {
+        Scope(Gc::new(
+            arena,
+            // TODO: Figure out how to represent `None`.
+            RefCell::new(arena, vec![Value::Boolean(false); len]),
+        ))
     }
 }

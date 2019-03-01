@@ -2,10 +2,11 @@ use std::collections::BTreeMap;
 
 use eko_gc::{Arena, Gc, RefCell};
 
+use crate::engine::frame::CapturedScope;
+
 use super::error::{Error, Result};
-use super::fun::Fn;
+use super::fun::{Constant, Fn};
 use super::ident::Ident;
-use super::scope::CapturedScope;
 use super::typ::{self, Kind};
 
 #[derive(Clone, Trace)]
@@ -18,6 +19,16 @@ pub enum Value<'gc> {
     Struct(Struct<'gc>),
     Enum(Enum<'gc>),
     Closure(Closure<'gc>),
+}
+
+impl<'gc> Value<'gc> {
+    pub fn from_constant(_arena: &Arena<'gc>, constant: Constant) -> Value<'gc> {
+        match constant {
+            Constant::Boolean(boolean) => Value::Boolean(boolean),
+            Constant::Integer(integer) => Value::Integer(integer),
+            Constant::Float(float) => Value::Float(float),
+        }
+    }
 }
 
 #[derive(Clone, Trace)]

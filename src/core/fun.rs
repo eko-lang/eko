@@ -25,8 +25,18 @@ pub enum FnProto<'gc> {
 pub struct Chunk<'gc>(Gc<'gc, ChunkData>);
 
 impl<'gc> Chunk<'gc> {
-    pub fn vars_len(&self) -> usize {
-        self.0.vars_len
+    pub fn new(arena: &Arena<'gc>, local_scope_len: usize, instrs: Vec<Instr>) -> Chunk<'gc> {
+        Chunk(Gc::new(
+            arena,
+            ChunkData {
+                local_scope_len,
+                instrs,
+            },
+        ))
+    }
+
+    pub fn local_scope_len(&self) -> usize {
+        self.0.local_scope_len
     }
 
     pub fn instr(&self, index: usize) -> Option<Instr> {
@@ -36,44 +46,19 @@ impl<'gc> Chunk<'gc> {
 
 #[derive(Trace)]
 pub struct ChunkData {
-    vars_len: usize,
+    local_scope_len: usize,
     instrs: Vec<Instr>,
 }
 
 #[derive(Clone, Copy)]
-pub enum Instr {}
-
-// TODO: Move this into `compiler`.
-pub struct ChunkBuilder {
-    vars_len: usize,
-    instrs: Vec<Instr>,
+pub enum Instr {
+    PushConstant(Constant),
+    Pop,
 }
 
-impl ChunkBuilder {
-    pub fn new() -> ChunkBuilder {
-        ChunkBuilder {
-            vars_len: 0,
-            instrs: Vec::new(),
-        }
-    }
-
-    pub fn vars_len(mut self, vars_len: usize) -> ChunkBuilder {
-        self.vars_len = vars_len;
-        self
-    }
-
-    pub fn instr(mut self, instr: Instr) -> ChunkBuilder {
-        self.instrs.push(instr);
-        self
-    }
-
-    pub fn build<'gc>(self, arena: &Arena<'gc>) -> Chunk<'gc> {
-        Chunk(Gc::new(
-            arena,
-            ChunkData {
-                vars_len: self.vars_len,
-                instrs: self.instrs,
-            },
-        ))
-    }
+#[derive(Clone, Copy)]
+pub enum Constant {
+    Boolean(bool),
+    Integer(i64),
+    Float(f64),
 }
