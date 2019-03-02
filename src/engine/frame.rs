@@ -49,8 +49,62 @@ impl<'gc> Frame<'gc> {
     }
 }
 
+// TODO: Avoid going through two layers of `Gc` and `RefCell`.
 #[derive(Clone, Trace)]
-pub struct CapturedScope<'gc>(Gc<'gc, RefCell<'gc, CapturedScopeData<'gc>>>);
+pub struct CapturedScope<'gc>(Gc<'gc, CapturedScopeData<'gc>>);
+
+impl<'gc> CapturedScope<'gc> {
+    pub fn new(
+        arena: &Arena<'gc>,
+        scope: Scope<'gc>,
+        captured_scope_len: usize,
+        parent_scope: Option<CapturedScope<'gc>>,
+    ) -> CapturedScope<'gc> {
+        CapturedScope(Gc::new(
+            arena,
+            CapturedScopeData {
+                parent_scope,
+                captured_scope_len,
+                scope,
+            },
+        ))
+    }
+
+    // TODO: Make this iterative.
+    pub fn set(
+        &self,
+        parents: usize,
+        var: usize,
+        value: Value<'gc>,
+    ) -> Result<'gc, ()> {
+        if parents == 0 {
+            if let Some(parent_scope) = &self.0.parent_scope {
+                return parent_scope.set(parents - 1, var, value);
+            } else {
+                return Err(Error::InvalidParent);
+            }
+        }
+        if var >= self.0.captured_scope_len {
+            return Err(Error::InvalidVar { var });
+        }
+        self.0.scope.set(var, value)
+    }
+
+    // TODO: Make this iterative.
+    pub fn get(&self, parents: usize, var: usize) -> Result<'gc, Value<'gc>> {
+        if parents == 0 {
+            if let Some(parent_scope) = &self.0.parent_scope {
+                return parent_scope.get(parents - 1, var);
+            } else {
+                return Err(Error::InvalidParent);
+            }
+        }
+        if var >= self.0.captured_scope_len {
+            return Err(Error::InvalidVar { var });
+        }
+        self.0.scope.get(var)
+    }
+}
 
 #[derive(Trace)]
 pub struct CapturedScopeData<'gc> {

@@ -19,6 +19,9 @@ pub enum Error<'gc> {
         received: OperandKind,
     },
 
+    #[error(display = "invalid parent")]
+    InvalidParent,
+
     #[error(display = "invalid variable: {}", var)]
     InvalidVar { var: usize },
 
