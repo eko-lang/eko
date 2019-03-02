@@ -22,7 +22,10 @@ pub enum Value<'gc> {
 }
 
 impl<'gc> Value<'gc> {
-    pub fn from_constant(_arena: &Arena<'gc>, constant: Constant) -> Value<'gc> {
+    pub fn from_constant(
+        _arena: &Arena<'gc>,
+        constant: Constant,
+    ) -> Value<'gc> {
         match constant {
             Constant::Boolean(boolean) => Value::Boolean(boolean),
             Constant::Integer(integer) => Value::Integer(integer),
@@ -69,12 +72,11 @@ impl<'gc> TupleData<'gc> {
     }
 
     fn field(&self, field: u8) -> Result<'gc, Value<'gc>> {
-        self.fields
-            .get(field as usize)
-            .cloned()
-            .ok_or_else(|| Error::InvalidField {
+        self.fields.get(field as usize).cloned().ok_or_else(|| {
+            Error::InvalidField {
                 field: Ident::new_number(field),
-            })
+            }
+        })
     }
 }
 
@@ -122,11 +124,19 @@ impl<'gc> Struct<'gc> {
         }
     }
 
-    pub fn set_tuple_field(&self, field: u8, value: Value<'gc>) -> Result<'gc, ()> {
+    pub fn set_tuple_field(
+        &self,
+        field: u8,
+        value: Value<'gc>,
+    ) -> Result<'gc, ()> {
         self.0.borrow_mut().proto.set_tuple_field(field, value)
     }
 
-    pub fn set_map_field(&self, field: Ident<'gc>, value: Value<'gc>) -> Result<'gc, ()> {
+    pub fn set_map_field(
+        &self,
+        field: Ident<'gc>,
+        value: Value<'gc>,
+    ) -> Result<'gc, ()> {
         self.0.borrow_mut().proto.set_map_field(field, value)
     }
 
@@ -149,11 +159,19 @@ pub struct StructData<'gc> {
 pub struct Enum<'gc>(Gc<'gc, RefCell<'gc, EnumData<'gc>>>);
 
 impl<'gc> Enum<'gc> {
-    pub fn set_tuple_field(&self, field: u8, value: Value<'gc>) -> Result<'gc, ()> {
+    pub fn set_tuple_field(
+        &self,
+        field: u8,
+        value: Value<'gc>,
+    ) -> Result<'gc, ()> {
         self.0.borrow_mut().proto.set_tuple_field(field, value)
     }
 
-    pub fn set_map_field(&self, field: Ident<'gc>, value: Value<'gc>) -> Result<'gc, ()> {
+    pub fn set_map_field(
+        &self,
+        field: Ident<'gc>,
+        value: Value<'gc>,
+    ) -> Result<'gc, ()> {
         self.0.borrow_mut().proto.set_map_field(field, value)
     }
 
@@ -180,7 +198,10 @@ pub enum StructProto<'gc> {
 }
 
 impl<'gc> StructProto<'gc> {
-    fn new_tuple(num_fields: u8, fields: Vec<Value<'gc>>) -> Result<'gc, StructProto<'gc>> {
+    fn new_tuple(
+        num_fields: u8,
+        fields: Vec<Value<'gc>>,
+    ) -> Result<'gc, StructProto<'gc>> {
         if num_fields > fields.len() as u8 {
             Err(Error::MissingField {
                 field: Ident::new_number(fields.len() as u8),
@@ -219,9 +240,15 @@ impl<'gc> StructProto<'gc> {
         Ok(StructProto::Map(MapData { fields }))
     }
 
-    fn set_tuple_field(&mut self, field: u8, value: Value<'gc>) -> Result<'gc, ()> {
+    fn set_tuple_field(
+        &mut self,
+        field: u8,
+        value: Value<'gc>,
+    ) -> Result<'gc, ()> {
         match self {
-            StructProto::Tuple(tuple_data) => tuple_data.set_field(field, value),
+            StructProto::Tuple(tuple_data) => {
+                tuple_data.set_field(field, value)
+            }
             StructProto::Map(_) => Err(Error::InvalidKind {
                 expected: Kind::Map,
                 received: Kind::Tuple,
@@ -229,7 +256,11 @@ impl<'gc> StructProto<'gc> {
         }
     }
 
-    fn set_map_field(&mut self, field: Ident<'gc>, value: Value<'gc>) -> Result<'gc, ()> {
+    fn set_map_field(
+        &mut self,
+        field: Ident<'gc>,
+        value: Value<'gc>,
+    ) -> Result<'gc, ()> {
         match self {
             StructProto::Tuple(_) => Err(Error::InvalidKind {
                 expected: Kind::Tuple,
@@ -266,7 +297,11 @@ pub struct MapData<'gc> {
 }
 
 impl<'gc> MapData<'gc> {
-    pub fn set_field(&mut self, field: Ident<'gc>, value: Value<'gc>) -> Result<'gc, ()> {
+    pub fn set_field(
+        &mut self,
+        field: Ident<'gc>,
+        value: Value<'gc>,
+    ) -> Result<'gc, ()> {
         if self.fields.get(&field).is_some() {
             self.fields.insert(field, value);
             Ok(())

@@ -3,6 +3,8 @@ use eko_gc::{Arena, Gc, RefCell};
 use crate::core::fun::{Chunk, Instr};
 use crate::core::value::Value;
 
+use super::error::{Error, Result};
+
 pub struct Frame<'gc> {
     cur_instr_index: usize,
     chunk: Chunk<'gc>,
@@ -41,6 +43,10 @@ impl<'gc> Frame<'gc> {
             None
         }
     }
+
+    pub fn local_scope(&self) -> &Scope<'gc> {
+        &self.local_scope
+    }
 }
 
 #[derive(Clone, Trace)]
@@ -63,5 +69,22 @@ impl<'gc> Scope<'gc> {
             // TODO: Figure out how to represent `None`.
             RefCell::new(arena, vec![Value::Boolean(false); len]),
         ))
+    }
+
+    pub fn set(&self, variable: usize, value: Value<'gc>) -> Result<'gc, ()> {
+        *self
+            .0
+            .borrow_mut()
+            .get_mut(variable)
+            .ok_or_else(|| Error::InvalidVariable { variable })? = value;
+        Ok(())
+    }
+
+    pub fn get(&self, variable: usize) -> Result<'gc, Value<'gc>> {
+        self.0
+            .borrow()
+            .get(variable)
+            .cloned()
+            .ok_or_else(|| Error::InvalidVariable { variable })
     }
 }

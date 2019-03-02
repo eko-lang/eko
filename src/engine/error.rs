@@ -19,7 +19,16 @@ pub enum Error<'gc> {
         received: OperandKind,
     },
 
-    #[error(display = "wrong arity: expected {}, received {}", expected, received)]
+    #[error(display = "invalid variable: {}", variable)]
+    InvalidVariable {
+        variable: usize,
+    },
+
+    #[error(
+        display = "wrong arity: expected {}, received {}",
+        expected,
+        received
+    )]
     WrongArity { expected: u8, received: u8 },
 
     #[error(display = "{:?}", _0)]

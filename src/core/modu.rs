@@ -13,7 +13,10 @@ impl<'gc> Mod<'gc> {
         Mod(Gc::new(arena, RefCell::new(arena, ModData::new())))
     }
 
-    pub fn with_parent_mod(arena: &Arena<'gc>, parent_mod: Mod<'gc>) -> Mod<'gc> {
+    pub fn with_parent_mod(
+        arena: &Arena<'gc>,
+        parent_mod: Mod<'gc>,
+    ) -> Mod<'gc> {
         Mod(Gc::new(
             arena,
             RefCell::new(arena, ModData::with_parent_mod(parent_mod)),

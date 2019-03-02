@@ -31,11 +31,15 @@ pub enum FnProto<'gc> {
     External(Box<dyn std::ops::FnOnce()>),
 }
 
-#[derive(Trace)]
+#[derive(Clone, Trace)]
 pub struct Chunk<'gc>(Gc<'gc, ChunkData>);
 
 impl<'gc> Chunk<'gc> {
-    pub fn new(arena: &Arena<'gc>, local_scope_len: usize, instrs: Vec<Instr>) -> Chunk<'gc> {
+    pub fn new(
+        arena: &Arena<'gc>,
+        local_scope_len: usize,
+        instrs: Vec<Instr>,
+    ) -> Chunk<'gc> {
         Chunk(Gc::new(
             arena,
             ChunkData {

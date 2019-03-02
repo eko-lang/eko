@@ -2,11 +2,12 @@ use std::fmt;
 
 use eko_gc::Arena;
 
-use crate::core::fun::{Constant, Fn, FnProto};
+use crate::core::fun::{Chunk, Constant, Fn, FnProto, Instr};
 use crate::core::modu::Mod;
 use crate::core::value::Value;
 
 use super::error::{Error, Result};
+use super::frame::Frame;
 
 pub struct Machine<'a, 'gc> {
     arena: &'a Arena<'gc>,
@@ -24,7 +25,7 @@ impl<'a, 'gc> Machine<'a, 'gc> {
     pub fn call(&mut self, arity: u8) -> Result<'gc, Value<'gc>> {
         let mut args = Vec::new();
         for _ in 0..arity {
-            args.push(self.operand_stack.pop_fn()?);
+            args.push(self.operand_stack.pop_value()?);
         }
 
         let fun = self.operand_stack.pop_fn()?;
@@ -36,9 +37,37 @@ impl<'a, 'gc> Machine<'a, 'gc> {
             });
         }
 
-        // TODO: Run either the chunk or the external.
+        match fun.proto() {
+            FnProto::Chunk(chunk) => self.call_chunk(chunk.clone(), args),
+            FnProto::External(_) => {
+                // TODO: Call the external function.
+                Ok(Value::Boolean(false))
+            }
+        }
+    }
 
-        Ok(Value::Boolean(false))
+    fn call_chunk(
+        &mut self,
+        chunk: Chunk<'gc>,
+        mut args: Vec<Value<'gc>>,
+    ) -> Result<'gc, Value<'gc>> {
+        use self::Instr::*;
+
+        let mut frame = Frame::new(self.arena, chunk);
+
+        for variable in 0..args.len() {
+            // TODO: Use `expect` here instead of `unwrap`.
+            frame.local_scope().set(variable, args.pop().unwrap())?;
+        }
+
+        while let Some(instr) = frame.step() {
+            match instr {
+                PushConstant(constant) => self.push_constant(constant),
+                Pop => self.pop().map(|_| ())?,
+            }
+        }
+
+        self.pop()
     }
 
     pub fn push_constant(&mut self, constant: Constant) {
