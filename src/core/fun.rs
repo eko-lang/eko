@@ -6,6 +6,16 @@ use super::modu::Mod;
 #[derive(Trace)]
 pub struct Fn<'gc>(Gc<'gc, FnData<'gc>>);
 
+impl<'gc> Fn<'gc> {
+    pub fn arity(&self) -> u8 {
+        self.0.arity
+    }
+
+    pub fn proto(&self) -> &FnProto<'gc> {
+        &self.0.proto
+    }
+}
+
 #[derive(Trace)]
 pub struct FnData<'gc> {
     modu: Mod<'gc>,
