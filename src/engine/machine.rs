@@ -8,13 +8,13 @@ use crate::core::value::Value;
 
 use super::error::{Error, Result};
 
-pub struct Machine<'gc> {
-    arena: &'gc Arena<'gc>,
+pub struct Machine<'a, 'gc> {
+    arena: &'a Arena<'gc>,
     operand_stack: OperandStack<'gc>,
 }
 
-impl<'gc> Machine<'gc> {
-    pub fn new(arena: &'gc Arena<'gc>) -> Machine<'gc> {
+impl<'a, 'gc> Machine<'a, 'gc> {
+    pub fn new(arena: &'a Arena<'gc>) -> Machine<'a, 'gc> {
         Machine {
             arena,
             operand_stack: OperandStack::new(),
