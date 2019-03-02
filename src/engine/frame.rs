@@ -71,20 +71,20 @@ impl<'gc> Scope<'gc> {
         ))
     }
 
-    pub fn set(&self, variable: usize, value: Value<'gc>) -> Result<'gc, ()> {
+    pub fn set(&self, var: usize, value: Value<'gc>) -> Result<'gc, ()> {
         *self
             .0
             .borrow_mut()
-            .get_mut(variable)
-            .ok_or_else(|| Error::InvalidVariable { variable })? = value;
+            .get_mut(var)
+            .ok_or_else(|| Error::InvalidVar { var })? = value;
         Ok(())
     }
 
-    pub fn get(&self, variable: usize) -> Result<'gc, Value<'gc>> {
+    pub fn get(&self, var: usize) -> Result<'gc, Value<'gc>> {
         self.0
             .borrow()
-            .get(variable)
+            .get(var)
             .cloned()
-            .ok_or_else(|| Error::InvalidVariable { variable })
+            .ok_or_else(|| Error::InvalidVar { var })
     }
 }
