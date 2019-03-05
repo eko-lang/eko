@@ -68,6 +68,9 @@ pub struct ChunkData {
 pub enum Instr {
     PushConstant(Constant),
     Pop,
+
+    LoadVar(usize),
+    StoreVar(usize),
 }
 
 #[derive(Clone, Copy)]

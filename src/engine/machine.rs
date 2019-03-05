@@ -64,6 +64,9 @@ impl<'a, 'gc> Machine<'a, 'gc> {
             match instr {
                 PushConstant(constant) => self.push_constant(constant),
                 Pop => self.pop().map(|_| ())?,
+
+                LoadVar(var) => self.load_var(&frame, var)?,
+                StoreVar(var) => self.store_var(&frame, var)?,
             }
         }
 
@@ -71,12 +74,31 @@ impl<'a, 'gc> Machine<'a, 'gc> {
     }
 
     pub fn push_constant(&mut self, constant: Constant) {
-        self.operand_stack
-            .push_value(Value::from_constant(self.arena, constant));
+        let value = Value::from_constant(self.arena, constant);
+        self.operand_stack.push_value(value);
     }
 
     pub fn pop(&mut self) -> Result<'gc, Value<'gc>> {
         self.operand_stack.pop_value()
+    }
+
+    pub fn load_var(
+        &mut self,
+        frame: &Frame<'gc>,
+        var: usize,
+    ) -> Result<'gc, ()> {
+        let value = frame.local_scope().get(var)?.clone();
+        self.operand_stack.push_value(value);
+        Ok(())
+    }
+
+    pub fn store_var(
+        &mut self,
+        frame: &Frame<'gc>,
+        var: usize,
+    ) -> Result<'gc, ()> {
+        let value = self.operand_stack.pop_value()?;
+        frame.local_scope().set(var, value)
     }
 }
 
