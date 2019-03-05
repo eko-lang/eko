@@ -5,7 +5,7 @@ use eko_gc::{Arena, Gc, RefCell};
 use super::ident::Ident;
 use super::typ::Type;
 
-#[derive(Trace)]
+#[derive(Clone, Trace)]
 pub struct Mod<'gc>(Gc<'gc, RefCell<'gc, ModData<'gc>>>);
 
 impl<'gc> Mod<'gc> {

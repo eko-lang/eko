@@ -2,7 +2,7 @@ use std::fmt;
 
 use eko_gc::Arena;
 
-use crate::core::fun::{Chunk, Const, Fn, FnProto, Instr};
+use crate::core::fun::{Chunk, Fn, FnProto, Instr};
 use crate::core::modu::Mod;
 use crate::core::value::Value;
 
@@ -62,7 +62,9 @@ impl<'a, 'gc> Machine<'a, 'gc> {
 
         while let Some(instr) = frame.step() {
             match instr {
-                PushConst { konst } => self.push_const(konst),
+                PushValue { value } => self.push_value(value),
+                PushMod { modu } => self.push_mod(modu),
+                PushFn { fun } => self.push_fn(fun),
                 Pop => self.pop().map(|_| ())?,
 
                 PushVar { var } => self.push_var(&frame, var)?,
@@ -73,9 +75,16 @@ impl<'a, 'gc> Machine<'a, 'gc> {
         self.pop()
     }
 
-    pub fn push_const(&mut self, konst: Const) {
-        let value = Value::from_constant(self.arena, konst);
+    pub fn push_value(&mut self, value: Value<'gc>) {
         self.operand_stack.push_value(value);
+    }
+
+    pub fn push_mod(&mut self, modu: Mod<'gc>) {
+        self.operand_stack.push_mod(modu);
+    }
+
+    pub fn push_fn(&mut self, fun: Fn<'gc>) {
+        self.operand_stack.push_fn(fun);
     }
 
     pub fn pop(&mut self) -> Result<'gc, Value<'gc>> {
@@ -88,8 +97,7 @@ impl<'a, 'gc> Machine<'a, 'gc> {
         var: usize,
     ) -> Result<'gc, ()> {
         let value = frame.local_scope().get(var)?.clone();
-        self.operand_stack.push_value(value);
-        Ok(())
+        Ok(self.push_value(value))
     }
 
     pub fn pop_var(

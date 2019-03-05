@@ -2,8 +2,9 @@ use eko_gc::{Arena, Gc};
 
 use super::ident::Ident;
 use super::modu::Mod;
+use super::value::Value;
 
-#[derive(Trace)]
+#[derive(Clone, Trace)]
 pub struct Fn<'gc>(Gc<'gc, FnData<'gc>>);
 
 impl<'gc> Fn<'gc> {
@@ -32,13 +33,13 @@ pub enum FnProto<'gc> {
 }
 
 #[derive(Clone, Trace)]
-pub struct Chunk<'gc>(Gc<'gc, ChunkData>);
+pub struct Chunk<'gc>(Gc<'gc, ChunkData<'gc>>);
 
 impl<'gc> Chunk<'gc> {
     pub fn new(
         arena: &Arena<'gc>,
         local_scope_len: usize,
-        instrs: Vec<Instr>,
+        instrs: Vec<Instr<'gc>>,
     ) -> Chunk<'gc> {
         Chunk(Gc::new(
             arena,
@@ -53,29 +54,24 @@ impl<'gc> Chunk<'gc> {
         self.0.local_scope_len
     }
 
-    pub fn instr(&self, index: usize) -> Option<Instr> {
+    pub fn instr(&self, index: usize) -> Option<Instr<'gc>> {
         self.0.instrs.get(index).cloned()
     }
 }
 
 #[derive(Trace)]
-pub struct ChunkData {
+pub struct ChunkData<'gc> {
     local_scope_len: usize,
-    instrs: Vec<Instr>,
+    instrs: Vec<Instr<'gc>>,
 }
 
-#[derive(Clone, Copy)]
-pub enum Instr {
-    PushConst { konst: Const },
+#[derive(Clone)]
+pub enum Instr<'gc> {
+    PushValue { value: Value<'gc> },
+    PushMod { modu: Mod<'gc> },
+    PushFn { fun: Fn<'gc> },
     Pop,
 
     PushVar { var: usize },
     PopVar { var: usize },
-}
-
-#[derive(Clone, Copy)]
-pub enum Const {
-    Boolean(bool),
-    Integer(i64),
-    Float(f64),
 }
