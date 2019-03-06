@@ -213,6 +213,7 @@ mod tests {
     use crate::compiler::generator::ChunkBuilder;
     use crate::core::fun::{Fn, Instr};
     use crate::core::value::Value;
+    use crate::engine::frame::Frame;
 
     use super::Machine;
 
@@ -222,6 +223,32 @@ mod tests {
         let mut machine = Machine::new(&arena);
 
         machine.push_value(Value::Integer(2));
+
+        // TODO: Maybe use `expect`?
+        assert_eq!(
+            machine.operand_stack.pop_value().unwrap(),
+            Value::Integer(2)
+        );
+    }
+
+    #[test]
+    fn pop_push_var() {
+        let arena = Arena::new();
+        let mut machine = Machine::new(&arena);
+
+        let mut chunk = ChunkBuilder::new();
+
+        let var = chunk.next_var();
+
+        let chunk = chunk.build(&arena);
+
+        let frame = Frame::new(&arena, chunk);
+
+        machine.push_value(Value::Integer(2));
+        // TODO: Maybe use `expect`?
+        machine.pop_var(&frame, var).unwrap();
+        // TODO: Maybe use `expect`?
+        machine.push_var(&frame, var).unwrap();
 
         // TODO: Maybe use `expect`?
         assert_eq!(
@@ -255,4 +282,7 @@ mod tests {
             Value::Integer(3)
         );
     }
+
+    #[test]
+    fn call_external() {}
 }
