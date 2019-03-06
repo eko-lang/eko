@@ -16,4 +16,6 @@ pub enum Instr<'gc> {
     Subtract,
     Multiply,
     Divide,
+
+    Call { arity: u8 },
 }

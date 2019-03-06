@@ -57,7 +57,7 @@ impl<'a, 'gc> Machine<'a, 'gc> {
         let mut frame = Frame::new(self.arena, chunk);
 
         for variable in 0..args.len() {
-            // TODO: Use `expect` here instead of `unwrap`.
+            // TODO: Remove the `expect`.
             frame.local_scope().set(variable, args.pop().unwrap())?;
         }
 
@@ -75,6 +75,8 @@ impl<'a, 'gc> Machine<'a, 'gc> {
                 Subtract => self.subtract()?,
                 Multiply => self.multiply()?,
                 Divide => self.divide()?,
+
+                Call { arity } => self.call(arity)?,
             }
         }
 
