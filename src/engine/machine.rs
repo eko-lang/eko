@@ -22,7 +22,7 @@ impl<'a, 'gc> Machine<'a, 'gc> {
         }
     }
 
-    pub fn call(&mut self, arity: u8) -> Result<'gc, Value<'gc>> {
+    pub fn call(&mut self, arity: u8) -> Result<'gc, ()> {
         let mut args = Vec::new();
         for _ in 0..arity {
             args.push(self.operand_stack.pop_value()?);
@@ -41,7 +41,7 @@ impl<'a, 'gc> Machine<'a, 'gc> {
             FnProto::Chunk(chunk) => self.call_chunk(chunk.clone(), args),
             FnProto::External(_) => {
                 // TODO: Call the external function.
-                Ok(Value::Boolean(false))
+                unimplemented!();
             }
         }
     }
@@ -50,7 +50,7 @@ impl<'a, 'gc> Machine<'a, 'gc> {
         &mut self,
         chunk: Chunk<'gc>,
         mut args: Vec<Value<'gc>>,
-    ) -> Result<'gc, Value<'gc>> {
+    ) -> Result<'gc, ()> {
         use self::Instr::*;
 
         let mut frame = Frame::new(self.arena, chunk);
@@ -72,7 +72,7 @@ impl<'a, 'gc> Machine<'a, 'gc> {
             }
         }
 
-        self.pop()
+        Ok(())
     }
 
     pub fn push_value(&mut self, value: Value<'gc>) {
@@ -87,8 +87,8 @@ impl<'a, 'gc> Machine<'a, 'gc> {
         self.operand_stack.push_fn(fun);
     }
 
-    pub fn pop(&mut self) -> Result<'gc, Value<'gc>> {
-        self.operand_stack.pop_value()
+    pub fn pop(&mut self) -> Result<'gc, ()> {
+        self.operand_stack.pop_value().map(|_| ())
     }
 
     pub fn push_var(
@@ -97,7 +97,7 @@ impl<'a, 'gc> Machine<'a, 'gc> {
         var: usize,
     ) -> Result<'gc, ()> {
         let value = frame.local_scope().get(var)?.clone();
-        Ok(self.push_value(value))
+        Ok(self.operand_stack.push_value(value))
     }
 
     pub fn pop_var(
@@ -105,7 +105,7 @@ impl<'a, 'gc> Machine<'a, 'gc> {
         frame: &Frame<'gc>,
         var: usize,
     ) -> Result<'gc, ()> {
-        let value = self.pop()?;
+        let value = self.operand_stack.pop_value()?;
         frame.local_scope().set(var, value)
     }
 }
@@ -210,6 +210,8 @@ impl fmt::Display for OperandKind {
 mod tests {
     use eko_gc::Arena;
 
+    use crate::compiler::generator::ChunkBuilder;
+    use crate::core::fun::{Fn, Instr};
     use crate::core::value::Value;
 
     use super::Machine;
@@ -222,6 +224,35 @@ mod tests {
         machine.push_value(Value::Integer(2));
 
         // TODO: Maybe use `expect`?
-        assert_eq!(machine.pop().unwrap(), Value::Integer(2));
+        assert_eq!(
+            machine.operand_stack.pop_value().unwrap(),
+            Value::Integer(2)
+        );
+    }
+
+    #[test]
+    fn call_chunk() {
+        let arena = Arena::new();
+        let mut machine = Machine::new(&arena);
+
+        let mut chunk = ChunkBuilder::new();
+
+        chunk.instr(Instr::Pop);
+        chunk.instr(Instr::PushValue {
+            value: Value::Integer(3),
+        });
+
+        let chunk = chunk.build(&arena);
+
+        machine.push_value(Value::Integer(2));
+        machine.push_fn(Fn::new_chunk(&arena, 0, chunk));
+        // TODO: Maybe use `expect`?
+        machine.call(0).unwrap();
+
+        // TODO: Maybe use `expect`?
+        assert_eq!(
+            machine.operand_stack.pop_value().unwrap(),
+            Value::Integer(3)
+        );
     }
 }
