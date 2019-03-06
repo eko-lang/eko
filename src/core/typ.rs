@@ -6,13 +6,13 @@ use eko_gc::{Gc, Ref, RefCell};
 use super::fun::Fn;
 use super::ident::Ident;
 
-#[derive(Trace)]
+#[derive(Debug, Trace)]
 pub enum Type<'gc> {
     Struct(Struct<'gc>),
     Enum(Enum<'gc>),
 }
 
-#[derive(Clone, Trace)]
+#[derive(Clone, Debug, Trace)]
 pub struct Struct<'gc>(Gc<'gc, RefCell<'gc, StructData<'gc>>>);
 
 impl<'gc> Struct<'gc> {
@@ -21,35 +21,36 @@ impl<'gc> Struct<'gc> {
     }
 }
 
-#[derive(Trace)]
+#[derive(Debug, Trace)]
 pub struct StructData<'gc> {
     ident: Ident<'gc>,
     proto: StructProto<'gc>,
     fns: BTreeMap<Ident<'gc>, Fn<'gc>>,
 }
 
-#[derive(Trace)]
+#[derive(Debug, Trace)]
 pub struct Enum<'gc>(Gc<'gc, RefCell<'gc, EnumData<'gc>>>);
 
-#[derive(Trace)]
+#[derive(Debug, Trace)]
 pub struct EnumData<'gc> {
     ident: Ident<'gc>,
     variants: Vec<EnumVariant<'gc>>,
     fns: BTreeMap<Ident<'gc>, Fn<'gc>>,
 }
 
-#[derive(Trace)]
+#[derive(Debug, Trace)]
 pub struct EnumVariant<'gc> {
     ident: Ident<'gc>,
     proto: StructProto<'gc>,
 }
 
-#[derive(Trace)]
+#[derive(Debug, Trace)]
 pub enum StructProto<'gc> {
     Tuple(u8),
     Map(MapData<'gc>),
 }
 
+#[derive(Debug)]
 pub struct MapData<'gc> {
     fields: BTreeMap<Ident<'gc>, ()>,
 }

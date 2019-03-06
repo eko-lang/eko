@@ -35,7 +35,7 @@ impl<'gc> Frame<'gc> {
         }
     }
 
-    pub fn step(&mut self) -> Option<Instr> {
+    pub fn step(&mut self) -> Option<Instr<'gc>> {
         if let Some(instr) = self.chunk.instr(self.cur_instr_index) {
             self.cur_instr_index += 1;
             Some(instr)
@@ -50,7 +50,7 @@ impl<'gc> Frame<'gc> {
 }
 
 // TODO: Avoid going through two layers of `Gc` and `RefCell`.
-#[derive(Clone, Trace)]
+#[derive(Clone, Debug, Trace)]
 pub struct CapturedScope<'gc>(Gc<'gc, CapturedScopeData<'gc>>);
 
 impl<'gc> CapturedScope<'gc> {
@@ -106,14 +106,14 @@ impl<'gc> CapturedScope<'gc> {
     }
 }
 
-#[derive(Trace)]
+#[derive(Debug, Trace)]
 pub struct CapturedScopeData<'gc> {
     parent_scope: Option<CapturedScope<'gc>>,
     captured_scope_len: usize,
     scope: Scope<'gc>,
 }
 
-#[derive(Trace)]
+#[derive(Debug, Trace)]
 pub struct Scope<'gc>(Gc<'gc, RefCell<'gc, Vec<Value<'gc>>>>);
 
 impl<'gc> Scope<'gc> {

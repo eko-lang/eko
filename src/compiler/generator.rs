@@ -2,13 +2,13 @@ use eko_gc::Arena;
 
 use crate::core::fun::{Chunk, Instr};
 
-pub struct ChunkBuilder {
+pub struct ChunkBuilder<'gc> {
     local_scope_len: usize,
-    instrs: Vec<Instr>,
+    instrs: Vec<Instr<'gc>>,
 }
 
-impl ChunkBuilder {
-    pub fn new() -> ChunkBuilder {
+impl<'gc> ChunkBuilder<'gc> {
+    pub fn new() -> ChunkBuilder<'gc> {
         ChunkBuilder {
             local_scope_len: 0,
             instrs: Vec::new(),
@@ -21,11 +21,11 @@ impl ChunkBuilder {
         local_scope_len
     }
 
-    pub fn instr(&mut self, instr: Instr) {
+    pub fn instr(&mut self, instr: Instr<'gc>) {
         self.instrs.push(instr);
     }
 
-    pub fn build<'gc>(self, arena: &Arena<'gc>) -> Chunk<'gc> {
+    pub fn build(self, arena: &Arena<'gc>) -> Chunk<'gc> {
         Chunk::new(arena, self.local_scope_len, self.instrs)
     }
 }

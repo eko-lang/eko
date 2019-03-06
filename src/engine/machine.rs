@@ -205,3 +205,23 @@ impl fmt::Display for OperandKind {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use eko_gc::Arena;
+
+    use crate::core::value::Value;
+
+    use super::Machine;
+
+    #[test]
+    fn push_value() {
+        let arena = Arena::new();
+        let mut machine = Machine::new(&arena);
+
+        machine.push_value(Value::Integer(2));
+
+        // TODO: Maybe use `expect`?
+        assert_eq!(machine.pop().unwrap(), Value::Integer(2));
+    }
+}

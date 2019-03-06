@@ -1,13 +1,33 @@
+use std::fmt;
+
 use eko_gc::{Arena, Gc};
 
 use super::ident::Ident;
 use super::modu::Mod;
 use super::value::Value;
 
-#[derive(Clone, Trace)]
+#[derive(Clone, Debug, Trace)]
 pub struct Fn<'gc>(Gc<'gc, FnData<'gc>>);
 
 impl<'gc> Fn<'gc> {
+    // TODO: Add in all the required parameters.
+    pub fn new_chunk(
+        arena: &Arena<'gc>,
+        arity: u8,
+        chunk: Chunk<'gc>,
+    ) -> Fn<'gc> {
+        Fn(Gc::new(
+            arena,
+            FnData {
+                modu: Mod::new(arena),
+                ident: Ident::new_number(0),
+                arity,
+                method: false,
+                proto: FnProto::Chunk(chunk),
+            },
+        ))
+    }
+
     pub fn arity(&self) -> u8 {
         self.0.arity
     }
@@ -17,7 +37,7 @@ impl<'gc> Fn<'gc> {
     }
 }
 
-#[derive(Trace)]
+#[derive(Debug, Trace)]
 pub struct FnData<'gc> {
     modu: Mod<'gc>,
     ident: Ident<'gc>,
@@ -32,7 +52,18 @@ pub enum FnProto<'gc> {
     External(Box<dyn std::ops::FnOnce()>),
 }
 
-#[derive(Clone, Trace)]
+impl<'gc> fmt::Debug for FnProto<'gc> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::FnProto::*;
+
+        match self {
+            Chunk(chunk) => fmt::Debug::fmt(chunk, f),
+            External(_) => write!(f, "External"),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Trace)]
 pub struct Chunk<'gc>(Gc<'gc, ChunkData<'gc>>);
 
 impl<'gc> Chunk<'gc> {
@@ -59,13 +90,13 @@ impl<'gc> Chunk<'gc> {
     }
 }
 
-#[derive(Trace)]
+#[derive(Debug, Trace)]
 pub struct ChunkData<'gc> {
     local_scope_len: usize,
     instrs: Vec<Instr<'gc>>,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum Instr<'gc> {
     PushValue { value: Value<'gc> },
     PushMod { modu: Mod<'gc> },

@@ -5,11 +5,11 @@ use eko_gc::{Arena, Gc, RefCell};
 use crate::engine::frame::CapturedScope;
 
 use super::error::{Error, Result};
-use super::fun::{Constant, Fn};
+use super::fun::Fn;
 use super::ident::Ident;
 use super::typ::{self, Kind};
 
-#[derive(Clone, Trace)]
+#[derive(Clone, Debug, PartialEq, Trace)]
 pub enum Value<'gc> {
     Boolean(bool),
     Integer(i64),
@@ -21,23 +21,16 @@ pub enum Value<'gc> {
     Closure(Closure<'gc>),
 }
 
-impl<'gc> Value<'gc> {
-    pub fn from_constant(
-        _arena: &Arena<'gc>,
-        constant: Constant,
-    ) -> Value<'gc> {
-        match constant {
-            Constant::Boolean(boolean) => Value::Boolean(boolean),
-            Constant::Integer(integer) => Value::Integer(integer),
-            Constant::Float(float) => Value::Float(float),
-        }
+#[derive(Clone, Debug, Trace)]
+pub struct String<'gc>(Gc<'gc, RefCell<'gc, std::string::String>>);
+
+impl<'gc> PartialEq for String<'gc> {
+    fn eq(&self, other: &String<'gc>) -> bool {
+        Gc::ptr_eq(&self.0, &other.0)
     }
 }
 
-#[derive(Clone, Trace)]
-pub struct String<'gc>(Gc<'gc, RefCell<'gc, std::string::String>>);
-
-#[derive(Clone, Trace)]
+#[derive(Clone, Debug, Trace)]
 pub struct Tuple<'gc>(Gc<'gc, RefCell<'gc, TupleData<'gc>>>);
 
 impl<'gc> Tuple<'gc> {
@@ -54,7 +47,13 @@ impl<'gc> Tuple<'gc> {
     }
 }
 
-#[derive(Trace)]
+impl<'gc> PartialEq for Tuple<'gc> {
+    fn eq(&self, other: &Tuple<'gc>) -> bool {
+        Gc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+#[derive(Debug, Trace)]
 pub struct TupleData<'gc> {
     fields: Vec<Value<'gc>>,
 }
@@ -80,7 +79,7 @@ impl<'gc> TupleData<'gc> {
     }
 }
 
-#[derive(Clone, Trace)]
+#[derive(Clone, Debug, Trace)]
 pub struct Struct<'gc>(Gc<'gc, RefCell<'gc, StructData<'gc>>>);
 
 impl<'gc> Struct<'gc> {
@@ -149,13 +148,19 @@ impl<'gc> Struct<'gc> {
     }
 }
 
-#[derive(Trace)]
+impl<'gc> PartialEq for Struct<'gc> {
+    fn eq(&self, other: &Struct<'gc>) -> bool {
+        Gc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+#[derive(Debug, Trace)]
 pub struct StructData<'gc> {
     typ: typ::Struct<'gc>,
     proto: StructProto<'gc>,
 }
 
-#[derive(Clone, Trace)]
+#[derive(Clone, Debug, Trace)]
 pub struct Enum<'gc>(Gc<'gc, RefCell<'gc, EnumData<'gc>>>);
 
 impl<'gc> Enum<'gc> {
@@ -184,14 +189,20 @@ impl<'gc> Enum<'gc> {
     }
 }
 
-#[derive(Trace)]
+impl<'gc> PartialEq for Enum<'gc> {
+    fn eq(&self, other: &Enum<'gc>) -> bool {
+        Gc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+#[derive(Debug, Trace)]
 pub struct EnumData<'gc> {
     typ: typ::Enum<'gc>,
     variant: u8,
     proto: StructProto<'gc>,
 }
 
-#[derive(Trace)]
+#[derive(Debug, Trace)]
 pub enum StructProto<'gc> {
     Tuple(TupleData<'gc>),
     Map(MapData<'gc>),
@@ -291,7 +302,7 @@ impl<'gc> StructProto<'gc> {
     }
 }
 
-#[derive(Trace)]
+#[derive(Debug, Trace)]
 pub struct MapData<'gc> {
     fields: BTreeMap<Ident<'gc>, Value<'gc>>,
 }
@@ -318,7 +329,7 @@ impl<'gc> MapData<'gc> {
     }
 }
 
-#[derive(Clone, Trace)]
+#[derive(Clone, Debug, Trace)]
 pub struct Closure<'gc>(Gc<'gc, ClosureData<'gc>>);
 
 impl<'gc> Closure<'gc> {
@@ -327,7 +338,13 @@ impl<'gc> Closure<'gc> {
     }
 }
 
-#[derive(Trace)]
+impl<'gc> PartialEq for Closure<'gc> {
+    fn eq(&self, other: &Closure<'gc>) -> bool {
+        Gc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+#[derive(Debug, Trace)]
 pub struct ClosureData<'gc> {
     captured_scope: CapturedScope<'gc>,
     data: Fn<'gc>,
