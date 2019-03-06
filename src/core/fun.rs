@@ -3,8 +3,8 @@ use std::fmt;
 use eko_gc::{Arena, Gc};
 
 use super::ident::Ident;
+use super::instr::Instr;
 use super::modu::Mod;
-use super::value::Value;
 
 #[derive(Clone, Debug, Trace)]
 pub struct Fn<'gc>(Gc<'gc, FnData<'gc>>);
@@ -94,15 +94,4 @@ impl<'gc> Chunk<'gc> {
 pub struct ChunkData<'gc> {
     local_scope_len: usize,
     instrs: Vec<Instr<'gc>>,
-}
-
-#[derive(Debug, Clone)]
-pub enum Instr<'gc> {
-    PushValue { value: Value<'gc> },
-    PushMod { modu: Mod<'gc> },
-    PushFn { fun: Fn<'gc> },
-    Pop,
-
-    PushVar { var: usize },
-    PopVar { var: usize },
 }

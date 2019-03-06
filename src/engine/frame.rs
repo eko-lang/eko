@@ -1,6 +1,7 @@
 use eko_gc::{Arena, Gc, RefCell};
 
-use crate::core::fun::{Chunk, Instr};
+use crate::core::fun::Chunk;
+use crate::core::instr::Instr;
 use crate::core::value::Value;
 
 use super::error::{Error, Result};

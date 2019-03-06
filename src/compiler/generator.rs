@@ -1,6 +1,7 @@
 use eko_gc::Arena;
 
-use crate::core::fun::{Chunk, Instr};
+use crate::core::fun::Chunk;
+use crate::core::instr::Instr;
 
 pub struct ChunkBuilder<'gc> {
     local_scope_len: usize,
