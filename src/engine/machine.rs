@@ -23,7 +23,7 @@ impl<'a, 'gc> Machine<'a, 'gc> {
         }
     }
 
-    pub fn call(&mut self, arity: u8) -> Result<'gc, ()> {
+    pub fn call(&mut self, arity: u8, is_method: bool) -> Result<'gc, ()> {
         let mut args = Vec::new();
         for _ in 0..arity {
             args.push(self.operand_stack.pop_value()?);
@@ -36,6 +36,11 @@ impl<'a, 'gc> Machine<'a, 'gc> {
                 expected: fun.arity(),
                 received: arity,
             });
+        }
+
+        // Cannot call a non-method as a method.
+        if !fun.is_method() && is_method {
+            return Err(Error::MethodNotFound);
         }
 
         match fun.proto() {
@@ -76,7 +81,7 @@ impl<'a, 'gc> Machine<'a, 'gc> {
                 Multiply => self.multiply()?,
                 Divide => self.divide()?,
 
-                Call { arity } => self.call(arity)?,
+                Call { arity, is_method } => self.call(arity, is_method)?,
             }
         }
 
@@ -367,7 +372,7 @@ mod tests {
 
         machine.push_value(Value::Integer(2));
         machine.push_fn(Fn::new_chunk(&arena, 0, chunk));
-        machine.call(0).unwrap();
+        machine.call(0, false).unwrap();
 
         assert_eq!(
             machine.operand_stack.pop_value().unwrap(),

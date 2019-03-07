@@ -17,5 +17,5 @@ pub enum Instr<'gc> {
     Multiply,
     Divide,
 
-    Call { arity: u8 },
+    Call { arity: u8, is_method: bool },
 }

@@ -25,6 +25,10 @@ pub enum Error<'gc> {
     #[error(display = "invalid variable: {}", var)]
     InvalidVar { var: usize },
 
+    // TODO: Display name of method.
+    #[error(display = "method not found")]
+    MethodNotFound,
+
     #[error(
         display = "wrong arity: expected {}, received {}",
         expected,

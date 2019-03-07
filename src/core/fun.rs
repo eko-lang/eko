@@ -22,7 +22,7 @@ impl<'gc> Fn<'gc> {
                 modu: Mod::new(arena),
                 ident: Ident::new_number(0),
                 arity,
-                method: false,
+                is_method: false,
                 proto: FnProto::Chunk(chunk),
             },
         ))
@@ -30,6 +30,10 @@ impl<'gc> Fn<'gc> {
 
     pub fn arity(&self) -> u8 {
         self.0.arity
+    }
+
+    pub fn is_method(&self) -> bool {
+        self.0.is_method
     }
 
     pub fn proto(&self) -> &FnProto<'gc> {
@@ -42,7 +46,7 @@ pub struct FnData<'gc> {
     modu: Mod<'gc>,
     ident: Ident<'gc>,
     arity: u8,
-    method: bool,
+    is_method: bool,
     proto: FnProto<'gc>,
 }
 
