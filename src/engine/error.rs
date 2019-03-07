@@ -1,4 +1,4 @@
-use std::marker::PhantomData;
+use crate::core::ident::Ident;
 
 use super::machine::OperandKind;
 
@@ -6,6 +6,17 @@ pub type Result<'gc, T> = std::result::Result<T, Error<'gc>>;
 
 #[derive(Debug, Error)]
 pub enum Error<'gc> {
+    // TODO: Display name of method.
+    #[error(display = "method not found: {}", ident)]
+    MethodNotFound { ident: Ident<'gc> },
+
+    #[error(
+        display = "wrong arity: expected {}, received {}",
+        expected,
+        received
+    )]
+    WrongArity { expected: u8, received: u8 },
+
     #[error(display = "empty operand stack")]
     EmptyOperandStack,
 
@@ -19,23 +30,9 @@ pub enum Error<'gc> {
         received: OperandKind,
     },
 
-    #[error(display = "invalid parent")]
-    InvalidParent,
+    #[error(display = "parent not found")]
+    ParentNotFound,
 
-    #[error(display = "invalid variable: {}", var)]
-    InvalidVar { var: usize },
-
-    // TODO: Display name of method.
-    #[error(display = "method not found")]
-    MethodNotFound,
-
-    #[error(
-        display = "wrong arity: expected {}, received {}",
-        expected,
-        received
-    )]
-    WrongArity { expected: u8, received: u8 },
-
-    #[error(display = "{:?}", _0)]
-    PhantomData(PhantomData<&'gc ()>),
+    #[error(display = "variable not found: {}", var)]
+    VarNotFound { var: usize },
 }

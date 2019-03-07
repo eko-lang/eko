@@ -28,6 +28,10 @@ impl<'gc> Fn<'gc> {
         ))
     }
 
+    pub fn ident(&self) -> &Ident<'gc> {
+        &self.0.ident
+    }
+
     pub fn arity(&self) -> u8 {
         self.0.arity
     }

@@ -38,9 +38,12 @@ impl<'a, 'gc> Machine<'a, 'gc> {
             });
         }
 
-        // Cannot call a non-method as a method.
+        // Can't call a non-method as a method. However, a method **can**
+        // be called as a non-method, hence the check is not just `!=`.
         if !fun.is_method() && is_method {
-            return Err(Error::MethodNotFound);
+            return Err(Error::MethodNotFound {
+                ident: fun.ident().clone(),
+            });
         }
 
         match fun.proto() {

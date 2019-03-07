@@ -82,11 +82,11 @@ impl<'gc> CapturedScope<'gc> {
             if let Some(parent_scope) = &self.0.parent_scope {
                 return parent_scope.set(parents - 1, var, value);
             } else {
-                return Err(Error::InvalidParent);
+                return Err(Error::ParentNotFound);
             }
         }
         if var >= self.0.captured_scope_len {
-            return Err(Error::InvalidVar { var });
+            return Err(Error::VarNotFound { var });
         }
         self.0.scope.set(var, value)
     }
@@ -97,11 +97,11 @@ impl<'gc> CapturedScope<'gc> {
             if let Some(parent_scope) = &self.0.parent_scope {
                 return parent_scope.get(parents - 1, var);
             } else {
-                return Err(Error::InvalidParent);
+                return Err(Error::ParentNotFound);
             }
         }
         if var >= self.0.captured_scope_len {
-            return Err(Error::InvalidVar { var });
+            return Err(Error::VarNotFound { var });
         }
         self.0.scope.get(var)
     }
@@ -131,7 +131,7 @@ impl<'gc> Scope<'gc> {
             .0
             .borrow_mut()
             .get_mut(var)
-            .ok_or_else(|| Error::InvalidVar { var })? = value;
+            .ok_or_else(|| Error::VarNotFound { var })? = value;
         Ok(())
     }
 
@@ -140,6 +140,6 @@ impl<'gc> Scope<'gc> {
             .borrow()
             .get(var)
             .cloned()
-            .ok_or_else(|| Error::InvalidVar { var })
+            .ok_or_else(|| Error::VarNotFound { var })
     }
 }
