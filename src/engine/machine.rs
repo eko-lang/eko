@@ -2,7 +2,7 @@ use std::fmt;
 
 use eko_gc::Arena;
 
-use crate::core::fun::{Chunk, Fn, FnProto};
+use crate::core::fun::{self, Chunk, Fn, FnProto};
 use crate::core::instr::Instr;
 use crate::core::modu::Mod;
 use crate::core::value::Value;
@@ -48,9 +48,8 @@ impl<'a, 'gc> Machine<'a, 'gc> {
 
         match fun.proto() {
             FnProto::Chunk(chunk) => self.call_chunk(chunk.clone(), args),
-            FnProto::External(_) => {
-                // TODO: Call the external function.
-                unimplemented!();
+            FnProto::External(external) => {
+                self.call_external(external.clone(), args)
             }
         }
     }
@@ -89,6 +88,15 @@ impl<'a, 'gc> Machine<'a, 'gc> {
         }
 
         Ok(())
+    }
+
+    fn call_external(
+        &mut self,
+        external: fun::External<'gc>,
+        args: Vec<Value<'gc>>,
+    ) -> Result<'gc, ()> {
+        let value = external.call(args);
+        Ok(self.operand_stack.push_value(value))
     }
 
     pub fn push_value(&mut self, value: Value<'gc>) {
@@ -320,7 +328,7 @@ mod tests {
     use eko_gc::Arena;
 
     use crate::compiler::generator::ChunkBuilder;
-    use crate::core::fun::Fn;
+    use crate::core::fun::{External, Fn};
     use crate::core::instr::Instr;
     use crate::core::value::Value;
     use crate::engine::frame::Frame;
@@ -384,7 +392,20 @@ mod tests {
     }
 
     #[test]
-    fn call_external() {}
+    fn call_external() {
+        let arena = Arena::new();
+        let mut machine = Machine::new(&arena);
+
+        let external = External::new(&arena, |_| Value::Integer(7));
+
+        machine.push_fn(Fn::new_external(&arena, 0, external));
+        machine.call(0, false).unwrap();
+
+        assert_eq!(
+            machine.operand_stack.pop_value().unwrap(),
+            Value::Integer(7),
+        );
+    }
 
     #[test]
     fn add() {

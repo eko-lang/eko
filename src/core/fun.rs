@@ -1,10 +1,11 @@
 use std::fmt;
 
-use eko_gc::{Arena, Gc};
+use eko_gc::{Arena, Gc, Trace};
 
 use super::ident::Ident;
 use super::instr::Instr;
 use super::modu::Mod;
+use super::value::Value;
 
 #[derive(Clone, Debug, Trace)]
 pub struct Fn<'gc>(Gc<'gc, FnData<'gc>>);
@@ -24,6 +25,24 @@ impl<'gc> Fn<'gc> {
                 arity,
                 is_method: false,
                 proto: FnProto::Chunk(chunk),
+            },
+        ))
+    }
+
+    // TODO: Add in all the required parameters.
+    pub fn new_external(
+        arena: &Arena<'gc>,
+        arity: u8,
+        external: External<'gc>,
+    ) -> Fn<'gc> {
+        Fn(Gc::new(
+            arena,
+            FnData {
+                modu: Mod::new(arena),
+                ident: Ident::new_number(0),
+                arity,
+                is_method: false,
+                proto: FnProto::External(external),
             },
         ))
     }
@@ -57,7 +76,7 @@ pub struct FnData<'gc> {
 #[derive(Trace)]
 pub enum FnProto<'gc> {
     Chunk(Chunk<'gc>),
-    External(Box<dyn std::ops::FnOnce()>),
+    External(External<'gc>),
 }
 
 impl<'gc> fmt::Debug for FnProto<'gc> {
@@ -66,6 +85,7 @@ impl<'gc> fmt::Debug for FnProto<'gc> {
 
         match self {
             Chunk(chunk) => fmt::Debug::fmt(chunk, f),
+            // TODO: Move this onto `External`.
             External(_) => write!(f, "External"),
         }
     }
@@ -103,3 +123,23 @@ pub struct ChunkData<'gc> {
     local_scope_len: usize,
     instrs: Vec<Instr<'gc>>,
 }
+
+#[derive(Clone, Trace)]
+pub struct External<'gc>(Gc<'gc, ExternalFn<'gc>>);
+
+impl<'gc> External<'gc> {
+    pub fn new(
+        arena: &Arena<'gc>,
+        external: fn(Vec<Value<'gc>>) -> Value<'gc>,
+    ) -> External<'gc> {
+        External(Gc::new(arena, ExternalFn(external)))
+    }
+
+    pub fn call(&self, args: Vec<Value<'gc>>) -> Value<'gc> {
+        ((self.0).0)(args)
+    }
+}
+
+pub struct ExternalFn<'gc>(fn(Vec<Value<'gc>>) -> Value<'gc>);
+
+unsafe impl<'gc> Trace for ExternalFn<'gc> {}
