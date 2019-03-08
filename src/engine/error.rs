@@ -6,7 +6,6 @@ pub type Result<'gc, T> = std::result::Result<T, Error<'gc>>;
 
 #[derive(Debug, Error)]
 pub enum Error<'gc> {
-    // TODO: Display name of method.
     #[error(display = "method not found: {}", ident)]
     MethodNotFound { ident: Ident<'gc> },
 
