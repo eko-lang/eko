@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+#![feature(try_from)]
 
 #[macro_use]
 extern crate eko_gc_derive;

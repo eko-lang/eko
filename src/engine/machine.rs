@@ -1,3 +1,4 @@
+use std::convert::{TryFrom, TryInto};
 use std::fmt;
 
 use eko_gc::Arena;
@@ -23,26 +24,36 @@ impl<'a, 'gc> Machine<'a, 'gc> {
         }
     }
 
-    pub fn call(&mut self, arity: u8, is_method: bool) -> Result<'gc, ()> {
+    pub fn call(&mut self, arity: u8) -> Result<'gc, ()> {
         let mut args = Vec::new();
         for _ in 0..arity {
-            args.push(self.operand_stack.pop_value()?);
+            args.push(self.operand_stack.pop()?.try_into()?);
         }
 
-        let fun = self.operand_stack.pop_fun()?;
+        let fun = match self.operand_stack.pop()? {
+            Operand::Fun(fun) => fun,
+            Operand::Method(method) => {
+                if method.0.is_method() {
+                    method.0
+                } else {
+                    return Err(Error::MethodNotFound {
+                        ident: method.0.ident().clone(),
+                    });
+                }
+            }
+            operand => {
+                // TODO: Should `expected` be a `Vec`?
+                return Err(Error::InvalidOperandKind {
+                    expected: OperandKind::Fun,
+                    received: operand.into(),
+                });
+            }
+        };
 
         if fun.arity() != arity {
             return Err(Error::WrongArity {
                 expected: fun.arity(),
                 received: arity,
-            });
-        }
-
-        // Can't call a non-method as a method. However, a method **can**
-        // be called as a non-method, hence the check is not just `!=`.
-        if !fun.is_method() && is_method {
-            return Err(Error::MethodNotFound {
-                ident: fun.ident().clone(),
             });
         }
 
@@ -63,19 +74,17 @@ impl<'a, 'gc> Machine<'a, 'gc> {
 
         let mut frame = Frame::new(self.arena, chunk);
 
-        for variable in 0..args.len() {
-            // TODO: Remove the `expect`.
-            frame.local_scope().set(variable, args.pop().unwrap())?;
+        for var in 0..args.len() {
+            // TODO: Change to use `expect`.
+            frame.local_scope().set(var, args.pop().unwrap())?;
         }
 
         while let Some(instr) = frame.step() {
             match instr {
-                PushValue { value } => self.push_value(value),
-                PushModu { modu } => self.push_modu(modu),
-                PushFun { fun } => self.push_fun(fun),
+                Value(value) => self.value(value),
 
-                LoadVar { var } => self.load_var(&frame, var)?,
-                StoreVar { var } => self.store_var(&frame, var)?,
+                Load(var) => self.load(&frame, var)?,
+                Store(var) => self.store(&frame, var)?,
 
                 Pop => self.pop().map(|_| ())?,
 
@@ -84,7 +93,7 @@ impl<'a, 'gc> Machine<'a, 'gc> {
                 Multiply => self.multiply()?,
                 Divide => self.divide()?,
 
-                Call { arity, is_method } => self.call(arity, is_method)?,
+                Call(arity) => self.call(arity)?,
             }
         }
 
@@ -97,46 +106,31 @@ impl<'a, 'gc> Machine<'a, 'gc> {
         args: Vec<Value<'gc>>,
     ) -> Result<'gc, ()> {
         let value = external.call(args);
-        Ok(self.operand_stack.push_value(value))
+        Ok(self.operand_stack.push(value.into()))
     }
 
-    pub fn push_value(&mut self, value: Value<'gc>) {
-        self.operand_stack.push_value(value);
+    pub fn value(&mut self, value: Value<'gc>) {
+        self.operand_stack.push(value.into());
     }
 
-    pub fn push_modu(&mut self, modu: Modu<'gc>) {
-        self.operand_stack.push_modu(modu);
-    }
-
-    pub fn push_fun(&mut self, fun: Fun<'gc>) {
-        self.operand_stack.push_fun(fun);
-    }
-
-    pub fn load_var(
-        &mut self,
-        frame: &Frame<'gc>,
-        var: usize,
-    ) -> Result<'gc, ()> {
+    pub fn load(&mut self, frame: &Frame<'gc>, var: usize) -> Result<'gc, ()> {
         let value = frame.local_scope().get(var)?.clone();
-        Ok(self.operand_stack.push_value(value))
+        Ok(self.operand_stack.push(value.into()))
     }
 
-    pub fn store_var(
-        &mut self,
-        frame: &Frame<'gc>,
-        var: usize,
-    ) -> Result<'gc, ()> {
-        let value = self.operand_stack.pop_value()?;
+    pub fn store(&mut self, frame: &Frame<'gc>, var: usize) -> Result<'gc, ()> {
+        let value = self.operand_stack.pop()?.try_into()?;
         frame.local_scope().set(var, value)
     }
 
     pub fn pop(&mut self) -> Result<'gc, ()> {
-        self.operand_stack.pop_value().map(|_| ())
+        let _value: Value<'_> = self.operand_stack.pop()?.try_into()?;
+        Ok(())
     }
 
     pub fn add(&mut self) -> Result<'gc, ()> {
-        let right_value = self.operand_stack.pop_value()?;
-        let left_value = self.operand_stack.pop_value()?;
+        let right_value = self.operand_stack.pop()?.try_into()?;
+        let left_value = self.operand_stack.pop()?.try_into()?;
 
         let value = match (left_value, right_value) {
             (Value::Integer(left), Value::Integer(right)) => {
@@ -154,12 +148,12 @@ impl<'a, 'gc> Machine<'a, 'gc> {
             _ => unimplemented!(),
         };
 
-        Ok(self.operand_stack.push_value(value))
+        Ok(self.operand_stack.push(value.into()))
     }
 
     pub fn subtract(&mut self) -> Result<'gc, ()> {
-        let right_value = self.operand_stack.pop_value()?;
-        let left_value = self.operand_stack.pop_value()?;
+        let right_value = self.operand_stack.pop()?.try_into()?;
+        let left_value = self.operand_stack.pop()?.try_into()?;
 
         let value = match (left_value, right_value) {
             (Value::Integer(left), Value::Integer(right)) => {
@@ -177,12 +171,12 @@ impl<'a, 'gc> Machine<'a, 'gc> {
             _ => unimplemented!(),
         };
 
-        Ok(self.operand_stack.push_value(value))
+        Ok(self.operand_stack.push(value.into()))
     }
 
     pub fn multiply(&mut self) -> Result<'gc, ()> {
-        let right_value = self.operand_stack.pop_value()?;
-        let left_value = self.operand_stack.pop_value()?;
+        let right_value = self.operand_stack.pop()?.try_into()?;
+        let left_value = self.operand_stack.pop()?.try_into()?;
 
         let value = match (left_value, right_value) {
             (Value::Integer(left), Value::Integer(right)) => {
@@ -200,12 +194,12 @@ impl<'a, 'gc> Machine<'a, 'gc> {
             _ => unimplemented!(),
         };
 
-        Ok(self.operand_stack.push_value(value))
+        Ok(self.operand_stack.push(value.into()))
     }
 
     pub fn divide(&mut self) -> Result<'gc, ()> {
-        let right_value = self.operand_stack.pop_value()?;
-        let left_value = self.operand_stack.pop_value()?;
+        let right_value = self.operand_stack.pop()?.try_into()?;
+        let left_value = self.operand_stack.pop()?.try_into()?;
 
         let value = match (left_value, right_value) {
             (Value::Integer(left), Value::Integer(right)) => {
@@ -223,7 +217,7 @@ impl<'a, 'gc> Machine<'a, 'gc> {
             _ => unimplemented!(),
         };
 
-        Ok(self.operand_stack.push_value(value))
+        Ok(self.operand_stack.push(value.into()))
     }
 }
 
@@ -234,68 +228,112 @@ impl<'gc> OperandStack<'gc> {
         OperandStack(Vec::new())
     }
 
-    pub fn push_modu(&mut self, modu: Modu<'gc>) {
-        self.0.push(Operand::Modu(modu))
+    pub fn push(&mut self, operand: Operand<'gc>) {
+        self.0.push(operand)
     }
 
-    pub fn pop_modu(&mut self) -> Result<'gc, Modu<'gc>> {
-        use self::Operand::*;
-
-        match self.0.pop() {
-            Some(Modu(modu)) => Ok(modu),
-            Some(operand) => Err(Error::InvalidOperandKind {
-                expected: OperandKind::Modu,
-                received: operand.into(),
-            }),
-            None => Err(Error::EmptyOperandStack),
-        }
-    }
-
-    pub fn push_fun(&mut self, fun: Fun<'gc>) {
-        self.0.push(Operand::Fun(fun))
-    }
-
-    pub fn pop_fun(&mut self) -> Result<'gc, Fun<'gc>> {
-        use self::Operand::*;
-
-        match self.0.pop() {
-            Some(Fun(fun)) => Ok(fun),
-            Some(operand) => Err(Error::InvalidOperandKind {
-                expected: OperandKind::Fun,
-                received: operand.into(),
-            }),
-            None => Err(Error::EmptyOperandStack),
-        }
-    }
-
-    pub fn push_value(&mut self, value: Value<'gc>) {
-        self.0.push(Operand::Value(value))
-    }
-
-    pub fn pop_value(&mut self) -> Result<'gc, Value<'gc>> {
-        use self::Operand::*;
-
-        match self.0.pop() {
-            Some(Value(value)) => Ok(value),
-            Some(operand) => Err(Error::InvalidOperandKind {
-                expected: OperandKind::Value,
-                received: operand.into(),
-            }),
-            None => Err(Error::EmptyOperandStack),
-        }
+    pub fn pop(&mut self) -> Result<'gc, Operand<'gc>> {
+        self.0.pop().ok_or_else(|| Error::EmptyOperandStack)
     }
 }
 
 pub enum Operand<'gc> {
     Modu(Modu<'gc>),
+
     Fun(Fun<'gc>),
+    Method(Method<'gc>),
+
     Value(Value<'gc>),
 }
+
+impl<'gc> From<Modu<'gc>> for Operand<'gc> {
+    fn from(modu: Modu<'gc>) -> Operand<'gc> {
+        Operand::Modu(modu)
+    }
+}
+
+impl<'gc> TryFrom<Operand<'gc>> for Modu<'gc> {
+    type Error = Error<'gc>;
+
+    fn try_from(operand: Operand<'gc>) -> Result<'gc, Modu<'gc>> {
+        match operand {
+            Operand::Modu(modu) => Ok(modu),
+            operand => Err(Error::InvalidOperandKind {
+                expected: OperandKind::Modu,
+                received: operand.into(),
+            }),
+        }
+    }
+}
+
+impl<'gc> From<Method<'gc>> for Operand<'gc> {
+    fn from(method: Method<'gc>) -> Operand<'gc> {
+        Operand::Method(method)
+    }
+}
+
+impl<'gc> TryFrom<Operand<'gc>> for Method<'gc> {
+    type Error = Error<'gc>;
+
+    fn try_from(operand: Operand<'gc>) -> Result<'gc, Method<'gc>> {
+        match operand {
+            Operand::Method(method) => Ok(method),
+            operand => Err(Error::InvalidOperandKind {
+                expected: OperandKind::Method,
+                received: operand.into(),
+            }),
+        }
+    }
+}
+
+impl<'gc> From<Fun<'gc>> for Operand<'gc> {
+    fn from(fun: Fun<'gc>) -> Operand<'gc> {
+        Operand::Fun(fun)
+    }
+}
+
+impl<'gc> TryFrom<Operand<'gc>> for Fun<'gc> {
+    type Error = Error<'gc>;
+
+    fn try_from(operand: Operand<'gc>) -> Result<'gc, Fun<'gc>> {
+        match operand {
+            Operand::Fun(fun) => Ok(fun),
+            operand => Err(Error::InvalidOperandKind {
+                expected: OperandKind::Fun,
+                received: operand.into(),
+            }),
+        }
+    }
+}
+
+impl<'gc> From<Value<'gc>> for Operand<'gc> {
+    fn from(value: Value<'gc>) -> Operand<'gc> {
+        Operand::Value(value)
+    }
+}
+
+impl<'gc> TryFrom<Operand<'gc>> for Value<'gc> {
+    type Error = Error<'gc>;
+
+    fn try_from(operand: Operand<'gc>) -> Result<'gc, Value<'gc>> {
+        match operand {
+            Operand::Value(value) => Ok(value),
+            operand => Err(Error::InvalidOperandKind {
+                expected: OperandKind::Value,
+                received: operand.into(),
+            }),
+        }
+    }
+}
+
+#[derive(Debug, Trace)]
+pub struct Method<'gc>(Fun<'gc>);
 
 #[derive(Debug)]
 pub enum OperandKind {
     Modu,
     Fun,
+    Method,
     Value,
 }
 
@@ -306,6 +344,7 @@ impl<'gc> From<Operand<'gc>> for OperandKind {
         match operand {
             Operand::Modu(_) => Modu,
             Operand::Fun(_) => Fun,
+            Operand::Method(_) => Method,
             Operand::Value(_) => Value,
         }
     }
@@ -319,6 +358,7 @@ impl fmt::Display for OperandKind {
         match self {
             Modu => write!(f, "mod"),
             Fun => write!(f, "fn"),
+            Method => write!(f, "method"),
             Value => write!(f, "value"),
         }
     }
@@ -327,6 +367,8 @@ impl fmt::Display for OperandKind {
 // TODO: Remove all the `unwrap`s.
 #[cfg(test)]
 mod tests {
+    use std::convert::TryInto;
+
     use eko_gc::Arena;
 
     use crate::compiler::generator::ChunkBuilder;
@@ -337,21 +379,26 @@ mod tests {
 
     use super::Machine;
 
-    #[test]
-    fn push_value() {
-        let arena = Arena::new();
-        let mut machine = Machine::new(&arena);
-
-        machine.push_value(Value::Integer(2));
-
-        assert_eq!(
-            machine.operand_stack.pop_value().unwrap(),
-            Value::Integer(2),
-        );
+    macro_rules! assert_ret {
+        ($machine:ident, $value:expr) => {
+            let value: Value<'_> =
+                $machine.operand_stack.pop().unwrap().try_into().unwrap();
+            assert_eq!(value, $value);
+        };
     }
 
     #[test]
-    fn pop_push_var() {
+    fn value() {
+        let arena = Arena::new();
+        let mut machine = Machine::new(&arena);
+
+        machine.value(Value::Integer(2));
+
+        assert_ret!(machine, Value::Integer(2));
+    }
+
+    #[test]
+    fn store_load() {
         let arena = Arena::new();
         let mut machine = Machine::new(&arena);
 
@@ -361,14 +408,11 @@ mod tests {
 
         let frame = Frame::new(&arena, chunk);
 
-        machine.push_value(Value::Integer(2));
-        machine.store_var(&frame, var).unwrap();
-        machine.load_var(&frame, var).unwrap();
+        machine.value(Value::Integer(2));
+        machine.store(&frame, var).unwrap();
+        machine.load(&frame, var).unwrap();
 
-        assert_eq!(
-            machine.operand_stack.pop_value().unwrap(),
-            Value::Integer(2),
-        );
+        assert_ret!(machine, Value::Integer(2));
     }
 
     #[test]
@@ -378,19 +422,16 @@ mod tests {
 
         let mut chunk = ChunkBuilder::new();
         chunk.instr(Instr::Pop);
-        chunk.instr(Instr::PushValue {
-            value: Value::Integer(3),
-        });
+        chunk.instr(Instr::Value(Value::Integer(3)));
         let chunk = chunk.build(&arena);
 
-        machine.push_value(Value::Integer(2));
-        machine.push_fun(Fun::new_chunk(&arena, 0, chunk));
-        machine.call(0, false).unwrap();
+        machine.value(Value::Integer(2));
+        machine
+            .operand_stack
+            .push(Fun::new_chunk(&arena, 0, chunk).into());
+        machine.call(0).unwrap();
 
-        assert_eq!(
-            machine.operand_stack.pop_value().unwrap(),
-            Value::Integer(3),
-        );
+        assert_ret!(machine, Value::Integer(3));
     }
 
     #[test]
@@ -400,13 +441,12 @@ mod tests {
 
         let external = External::new(&arena, |_| Value::Integer(7));
 
-        machine.push_fun(Fun::new_external(&arena, 0, external));
-        machine.call(0, false).unwrap();
+        machine
+            .operand_stack
+            .push(Fun::new_external(&arena, 0, external).into());
+        machine.call(0).unwrap();
 
-        assert_eq!(
-            machine.operand_stack.pop_value().unwrap(),
-            Value::Integer(7),
-        );
+        assert_ret!(machine, Value::Integer(7));
     }
 
     #[test]
@@ -414,14 +454,11 @@ mod tests {
         let arena = Arena::new();
         let mut machine = Machine::new(&arena);
 
-        machine.push_value(Value::Integer(2));
-        machine.push_value(Value::Integer(5));
+        machine.value(Value::Integer(2));
+        machine.value(Value::Integer(5));
         machine.add().unwrap();
 
-        assert_eq!(
-            machine.operand_stack.pop_value().unwrap(),
-            Value::Integer(7),
-        );
+        assert_ret!(machine, Value::Integer(7));
     }
 
     #[test]
@@ -429,14 +466,11 @@ mod tests {
         let arena = Arena::new();
         let mut machine = Machine::new(&arena);
 
-        machine.push_value(Value::Integer(2));
-        machine.push_value(Value::Float(5.0));
+        machine.value(Value::Integer(2));
+        machine.value(Value::Float(5.0));
         machine.subtract().unwrap();
 
-        assert_eq!(
-            machine.operand_stack.pop_value().unwrap(),
-            Value::Float(-3.0),
-        );
+        assert_ret!(machine, Value::Float(-3.0));
     }
 
     #[test]
@@ -444,14 +478,11 @@ mod tests {
         let arena = Arena::new();
         let mut machine = Machine::new(&arena);
 
-        machine.push_value(Value::Float(2.5));
-        machine.push_value(Value::Integer(4));
+        machine.value(Value::Float(2.5));
+        machine.value(Value::Integer(4));
         machine.multiply().unwrap();
 
-        assert_eq!(
-            machine.operand_stack.pop_value().unwrap(),
-            Value::Float(10.0),
-        );
+        assert_ret!(machine, Value::Float(10.0));
     }
 
     #[test]
@@ -459,13 +490,10 @@ mod tests {
         let arena = Arena::new();
         let mut machine = Machine::new(&arena);
 
-        machine.push_value(Value::Integer(20));
-        machine.push_value(Value::Integer(6));
+        machine.value(Value::Integer(20));
+        machine.value(Value::Integer(6));
         machine.divide().unwrap();
 
-        assert_eq!(
-            machine.operand_stack.pop_value().unwrap(),
-            Value::Integer(3),
-        );
+        assert_ret!(machine, Value::Integer(3));
     }
 }
