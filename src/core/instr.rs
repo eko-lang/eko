@@ -7,10 +7,11 @@ pub enum Instr<'gc> {
     PushValue { value: Value<'gc> },
     PushMod { modu: Mod<'gc> },
     PushFn { fun: Fn<'gc> },
-    Pop,
 
     LoadVar { var: usize },
     StoreVar { var: usize },
+
+    Pop,
 
     Add,
     Subtract,

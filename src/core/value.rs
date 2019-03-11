@@ -72,7 +72,7 @@ impl<'gc> TupleData<'gc> {
             Ok(())
         } else {
             Err(Error::InvalidField {
-                field: Ident::new_number(field),
+                ident: Ident::new_number(field),
             })
         }
     }
@@ -80,7 +80,7 @@ impl<'gc> TupleData<'gc> {
     fn field(&self, field: u8) -> Result<'gc, Value<'gc>> {
         self.fields.get(field as usize).cloned().ok_or_else(|| {
             Error::InvalidField {
-                field: Ident::new_number(field),
+                ident: Ident::new_number(field),
             }
         })
     }
@@ -222,11 +222,11 @@ impl<'gc> StructProto<'gc> {
     ) -> Result<'gc, StructProto<'gc>> {
         if num_fields > fields.len() as u8 {
             Err(Error::MissingField {
-                field: Ident::new_number(fields.len() as u8),
+                ident: Ident::new_number(fields.len() as u8),
             })
         } else if num_fields < fields.len() as u8 {
             Err(Error::InvalidField {
-                field: Ident::new_number(num_fields),
+                ident: Ident::new_number(num_fields),
             })
         } else {
             Ok(StructProto::Tuple(TupleData { fields }))
@@ -242,7 +242,7 @@ impl<'gc> StructProto<'gc> {
         for (ident, _) in map_data_fields.iter() {
             if fields.get(ident).is_none() {
                 return Err(Error::MissingField {
-                    field: ident.clone(),
+                    ident: ident.clone(),
                 });
             }
         }
@@ -250,7 +250,7 @@ impl<'gc> StructProto<'gc> {
         for (ident, _) in fields.iter() {
             if map_data_fields.get(ident).is_none() {
                 return Err(Error::InvalidField {
-                    field: ident.clone(),
+                    ident: ident.clone(),
                 });
             }
         }
@@ -317,22 +317,22 @@ pub struct MapData<'gc> {
 impl<'gc> MapData<'gc> {
     pub fn set_field(
         &mut self,
-        field: Ident<'gc>,
+        ident: Ident<'gc>,
         value: Value<'gc>,
     ) -> Result<'gc, ()> {
-        if self.fields.get(&field).is_some() {
-            self.fields.insert(field, value);
+        if self.fields.get(&ident).is_some() {
+            self.fields.insert(ident, value);
             Ok(())
         } else {
-            Err(Error::InvalidField { field })
+            Err(Error::InvalidField { ident })
         }
     }
 
-    pub fn field(&self, field: Ident<'gc>) -> Result<'gc, Value<'gc>> {
+    pub fn field(&self, ident: Ident<'gc>) -> Result<'gc, Value<'gc>> {
         self.fields
-            .get(&field)
+            .get(&ident)
             .cloned()
-            .ok_or_else(|| Error::InvalidField { field })
+            .ok_or_else(|| Error::InvalidField { ident })
     }
 }
 

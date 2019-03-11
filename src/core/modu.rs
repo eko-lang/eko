@@ -2,6 +2,8 @@ use std::collections::BTreeMap;
 
 use eko_gc::{Arena, Gc, RefCell};
 
+use super::error::{Error, Result};
+use super::fun::Fn;
 use super::ident::Ident;
 use super::typ::Type;
 
@@ -31,7 +33,11 @@ impl<'gc> Mod<'gc> {
         ))
     }
 
-    pub fn fun(&self, ident: &Ident<'gc>) -> Option<Fn<'gc>> {
+    pub fn define_fn(&self, ident: Ident<'gc>, fun: Fn<'gc>) {
+        self.0.borrow_mut().define_fn(ident, fun);
+    }
+
+    pub fn fun(&self, ident: Ident<'gc>) -> Result<'gc, Fn<'gc>> {
         self.0.borrow().fun(ident)
     }
 }
@@ -69,7 +75,14 @@ impl<'gc> ModData<'gc> {
         }
     }
 
-    fn fun(&self, ident: &Ident<'gc>) -> Option<Fn<'gc>> {
-        self.fns.get(ident).cloned()
+    fn define_fn(&mut self, ident: Ident<'gc>, fun: Fn<'gc>) {
+        self.fns.insert(ident, fun);
+    }
+
+    fn fun(&self, ident: Ident<'gc>) -> Result<'gc, Fn<'gc>> {
+        self.fns
+            .get(&ident)
+            .cloned()
+            .ok_or_else(|| Error::FnNotFound { ident })
     }
 }

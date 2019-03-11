@@ -5,11 +5,14 @@ pub type Result<'gc, T> = std::result::Result<T, Error<'gc>>;
 
 #[derive(Debug, Error)]
 pub enum Error<'gc> {
-    #[error(display = "missing field: {}", _0)]
-    MissingField { field: Ident<'gc> },
+    #[error(display = "function not found: {}", ident)]
+    FnNotFound { ident: Ident<'gc> },
 
-    #[error(display = "invalid field: {}", _0)]
-    InvalidField { field: Ident<'gc> },
+    #[error(display = "missing field: {}", ident)]
+    MissingField { ident: Ident<'gc> },
+
+    #[error(display = "invalid field: {}", ident)]
+    InvalidField { ident: Ident<'gc> },
 
     #[error(
         display = "invalid kind: expected {}, received {}",

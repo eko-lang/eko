@@ -3,6 +3,7 @@ use std::fmt;
 
 use eko_gc::{Gc, Ref, RefCell};
 
+use super::error::{Error, Result};
 use super::fun::Fn;
 use super::ident::Ident;
 
@@ -28,6 +29,19 @@ pub struct StructData<'gc> {
     fns: BTreeMap<Ident<'gc>, Fn<'gc>>,
 }
 
+impl<'gc> StructData<'gc> {
+    pub fn define_fn(&mut self, ident: Ident<'gc>, fun: Fn<'gc>) {
+        self.fns.insert(ident, fun);
+    }
+
+    pub fn fun(&self, ident: Ident<'gc>) -> Result<'gc, Fn<'gc>> {
+        self.fns
+            .get(&ident)
+            .cloned()
+            .ok_or_else(|| Error::FnNotFound { ident })
+    }
+}
+
 #[derive(Debug, Trace)]
 pub struct Enum<'gc>(Gc<'gc, RefCell<'gc, EnumData<'gc>>>);
 
@@ -36,6 +50,19 @@ pub struct EnumData<'gc> {
     ident: Ident<'gc>,
     variants: Vec<EnumVariant<'gc>>,
     fns: BTreeMap<Ident<'gc>, Fn<'gc>>,
+}
+
+impl<'gc> EnumData<'gc> {
+    pub fn define_fn(&mut self, ident: Ident<'gc>, fun: Fn<'gc>) {
+        self.fns.insert(ident, fun);
+    }
+
+    pub fn fun(&self, ident: Ident<'gc>) -> Result<'gc, Fn<'gc>> {
+        self.fns
+            .get(&ident)
+            .cloned()
+            .ok_or_else(|| Error::FnNotFound { ident })
+    }
 }
 
 #[derive(Debug, Trace)]
