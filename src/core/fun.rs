@@ -4,27 +4,27 @@ use eko_gc::{Arena, Gc, Trace};
 
 use super::ident::Ident;
 use super::instr::Instr;
-use super::modu::Mod;
+use super::modu::Modu;
 use super::value::Value;
 
 #[derive(Clone, Debug, Trace)]
-pub struct Fn<'gc>(Gc<'gc, FnData<'gc>>);
+pub struct Fun<'gc>(Gc<'gc, FunData<'gc>>);
 
-impl<'gc> Fn<'gc> {
+impl<'gc> Fun<'gc> {
     // TODO: Add in all the required parameters.
     pub fn new_chunk(
         arena: &Arena<'gc>,
         arity: u8,
         chunk: Chunk<'gc>,
-    ) -> Fn<'gc> {
-        Fn(Gc::new(
+    ) -> Fun<'gc> {
+        Fun(Gc::new(
             arena,
-            FnData {
-                modu: Mod::new(arena),
+            FunData {
+                modu: Modu::new(arena),
                 ident: Ident::new_number(0),
                 arity,
                 is_method: false,
-                proto: FnProto::Chunk(chunk),
+                proto: FunProto::Chunk(chunk),
             },
         ))
     }
@@ -34,15 +34,15 @@ impl<'gc> Fn<'gc> {
         arena: &Arena<'gc>,
         arity: u8,
         external: External<'gc>,
-    ) -> Fn<'gc> {
-        Fn(Gc::new(
+    ) -> Fun<'gc> {
+        Fun(Gc::new(
             arena,
-            FnData {
-                modu: Mod::new(arena),
+            FunData {
+                modu: Modu::new(arena),
                 ident: Ident::new_number(0),
                 arity,
                 is_method: false,
-                proto: FnProto::External(external),
+                proto: FunProto::External(external),
             },
         ))
     }
@@ -59,29 +59,29 @@ impl<'gc> Fn<'gc> {
         self.0.is_method
     }
 
-    pub fn proto(&self) -> &FnProto<'gc> {
+    pub fn proto(&self) -> &FunProto<'gc> {
         &self.0.proto
     }
 }
 
 #[derive(Debug, Trace)]
-pub struct FnData<'gc> {
-    modu: Mod<'gc>,
+pub struct FunData<'gc> {
+    modu: Modu<'gc>,
     ident: Ident<'gc>,
     arity: u8,
     is_method: bool,
-    proto: FnProto<'gc>,
+    proto: FunProto<'gc>,
 }
 
 #[derive(Trace)]
-pub enum FnProto<'gc> {
+pub enum FunProto<'gc> {
     Chunk(Chunk<'gc>),
     External(External<'gc>),
 }
 
-impl<'gc> fmt::Debug for FnProto<'gc> {
+impl<'gc> fmt::Debug for FunProto<'gc> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use self::FnProto::*;
+        use self::FunProto::*;
 
         match self {
             Chunk(chunk) => fmt::Debug::fmt(chunk, f),
@@ -125,14 +125,14 @@ pub struct ChunkData<'gc> {
 }
 
 #[derive(Clone, Trace)]
-pub struct External<'gc>(Gc<'gc, ExternalFn<'gc>>);
+pub struct External<'gc>(Gc<'gc, ExternalFun<'gc>>);
 
 impl<'gc> External<'gc> {
     pub fn new(
         arena: &Arena<'gc>,
         external: fn(Vec<Value<'gc>>) -> Value<'gc>,
     ) -> External<'gc> {
-        External(Gc::new(arena, ExternalFn(external)))
+        External(Gc::new(arena, ExternalFun(external)))
     }
 
     pub fn call(&self, args: Vec<Value<'gc>>) -> Value<'gc> {
@@ -140,6 +140,6 @@ impl<'gc> External<'gc> {
     }
 }
 
-pub struct ExternalFn<'gc>(fn(Vec<Value<'gc>>) -> Value<'gc>);
+pub struct ExternalFun<'gc>(fn(Vec<Value<'gc>>) -> Value<'gc>);
 
-unsafe impl<'gc> Trace for ExternalFn<'gc> {}
+unsafe impl<'gc> Trace for ExternalFun<'gc> {}

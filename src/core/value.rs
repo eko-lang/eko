@@ -5,7 +5,7 @@ use eko_gc::{Arena, Gc, RefCell};
 use crate::engine::frame::CapturedScope;
 
 use super::error::{Error, Result};
-use super::fun::Fn;
+use super::fun::Fun;
 use super::ident::Ident;
 use super::typ::{self, Kind};
 
@@ -376,5 +376,5 @@ impl<'gc> PartialEq for Closure<'gc> {
 #[derive(Debug, Trace)]
 pub struct ClosureData<'gc> {
     captured_scope: CapturedScope<'gc>,
-    data: Fn<'gc>,
+    data: Fun<'gc>,
 }

@@ -6,7 +6,7 @@ pub type Result<'gc, T> = std::result::Result<T, Error<'gc>>;
 #[derive(Debug, Error)]
 pub enum Error<'gc> {
     #[error(display = "function not found: {}", ident)]
-    FnNotFound { ident: Ident<'gc> },
+    FunNotFound { ident: Ident<'gc> },
 
     #[error(display = "missing field: {}", ident)]
     MissingField { ident: Ident<'gc> },

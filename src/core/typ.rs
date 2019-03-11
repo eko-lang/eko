@@ -4,11 +4,11 @@ use std::fmt;
 use eko_gc::{Gc, Ref, RefCell};
 
 use super::error::{Error, Result};
-use super::fun::Fn;
+use super::fun::Fun;
 use super::ident::Ident;
 
 #[derive(Debug, Trace)]
-pub enum Type<'gc> {
+pub enum Typ<'gc> {
     Struct(Struct<'gc>),
     Enum(Enum<'gc>),
 }
@@ -26,19 +26,19 @@ impl<'gc> Struct<'gc> {
 pub struct StructData<'gc> {
     ident: Ident<'gc>,
     proto: StructProto<'gc>,
-    fns: BTreeMap<Ident<'gc>, Fn<'gc>>,
+    funs: BTreeMap<Ident<'gc>, Fun<'gc>>,
 }
 
 impl<'gc> StructData<'gc> {
-    pub fn define_fn(&mut self, ident: Ident<'gc>, fun: Fn<'gc>) {
-        self.fns.insert(ident, fun);
+    pub fn define_fun(&mut self, ident: Ident<'gc>, fun: Fun<'gc>) {
+        self.funs.insert(ident, fun);
     }
 
-    pub fn fun(&self, ident: Ident<'gc>) -> Result<'gc, Fn<'gc>> {
-        self.fns
+    pub fn fun(&self, ident: Ident<'gc>) -> Result<'gc, Fun<'gc>> {
+        self.funs
             .get(&ident)
             .cloned()
-            .ok_or_else(|| Error::FnNotFound { ident })
+            .ok_or_else(|| Error::FunNotFound { ident })
     }
 }
 
@@ -49,19 +49,19 @@ pub struct Enum<'gc>(Gc<'gc, RefCell<'gc, EnumData<'gc>>>);
 pub struct EnumData<'gc> {
     ident: Ident<'gc>,
     variants: Vec<EnumVariant<'gc>>,
-    fns: BTreeMap<Ident<'gc>, Fn<'gc>>,
+    funs: BTreeMap<Ident<'gc>, Fun<'gc>>,
 }
 
 impl<'gc> EnumData<'gc> {
-    pub fn define_fn(&mut self, ident: Ident<'gc>, fun: Fn<'gc>) {
-        self.fns.insert(ident, fun);
+    pub fn define_fun(&mut self, ident: Ident<'gc>, fun: Fun<'gc>) {
+        self.funs.insert(ident, fun);
     }
 
-    pub fn fun(&self, ident: Ident<'gc>) -> Result<'gc, Fn<'gc>> {
-        self.fns
+    pub fn fun(&self, ident: Ident<'gc>) -> Result<'gc, Fun<'gc>> {
+        self.funs
             .get(&ident)
             .cloned()
-            .ok_or_else(|| Error::FnNotFound { ident })
+            .ok_or_else(|| Error::FunNotFound { ident })
     }
 }
 

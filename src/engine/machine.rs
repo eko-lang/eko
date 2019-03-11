@@ -2,9 +2,9 @@ use std::fmt;
 
 use eko_gc::Arena;
 
-use crate::core::fun::{self, Chunk, Fn, FnProto};
+use crate::core::fun::{self, Chunk, Fun, FunProto};
 use crate::core::instr::Instr;
-use crate::core::modu::Mod;
+use crate::core::modu::Modu;
 use crate::core::value::Value;
 
 use super::error::{Error, Result};
@@ -29,7 +29,7 @@ impl<'a, 'gc> Machine<'a, 'gc> {
             args.push(self.operand_stack.pop_value()?);
         }
 
-        let fun = self.operand_stack.pop_fn()?;
+        let fun = self.operand_stack.pop_fun()?;
 
         if fun.arity() != arity {
             return Err(Error::WrongArity {
@@ -47,8 +47,8 @@ impl<'a, 'gc> Machine<'a, 'gc> {
         }
 
         match fun.proto() {
-            FnProto::Chunk(chunk) => self.call_chunk(chunk.clone(), args),
-            FnProto::External(external) => {
+            FunProto::Chunk(chunk) => self.call_chunk(chunk.clone(), args),
+            FunProto::External(external) => {
                 self.call_external(external.clone(), args)
             }
         }
@@ -71,8 +71,8 @@ impl<'a, 'gc> Machine<'a, 'gc> {
         while let Some(instr) = frame.step() {
             match instr {
                 PushValue { value } => self.push_value(value),
-                PushMod { modu } => self.push_mod(modu),
-                PushFn { fun } => self.push_fn(fun),
+                PushModu { modu } => self.push_modu(modu),
+                PushFun { fun } => self.push_fun(fun),
 
                 LoadVar { var } => self.load_var(&frame, var)?,
                 StoreVar { var } => self.store_var(&frame, var)?,
@@ -104,12 +104,12 @@ impl<'a, 'gc> Machine<'a, 'gc> {
         self.operand_stack.push_value(value);
     }
 
-    pub fn push_mod(&mut self, modu: Mod<'gc>) {
-        self.operand_stack.push_mod(modu);
+    pub fn push_modu(&mut self, modu: Modu<'gc>) {
+        self.operand_stack.push_modu(modu);
     }
 
-    pub fn push_fn(&mut self, fun: Fn<'gc>) {
-        self.operand_stack.push_fn(fun);
+    pub fn push_fun(&mut self, fun: Fun<'gc>) {
+        self.operand_stack.push_fun(fun);
     }
 
     pub fn load_var(
@@ -234,34 +234,34 @@ impl<'gc> OperandStack<'gc> {
         OperandStack(Vec::new())
     }
 
-    pub fn push_mod(&mut self, modu: Mod<'gc>) {
-        self.0.push(Operand::Mod(modu))
+    pub fn push_modu(&mut self, modu: Modu<'gc>) {
+        self.0.push(Operand::Modu(modu))
     }
 
-    pub fn pop_mod(&mut self) -> Result<'gc, Mod<'gc>> {
+    pub fn pop_modu(&mut self) -> Result<'gc, Modu<'gc>> {
         use self::Operand::*;
 
         match self.0.pop() {
-            Some(Mod(modu)) => Ok(modu),
+            Some(Modu(modu)) => Ok(modu),
             Some(operand) => Err(Error::InvalidOperandKind {
-                expected: OperandKind::Mod,
+                expected: OperandKind::Modu,
                 received: operand.into(),
             }),
             None => Err(Error::EmptyOperandStack),
         }
     }
 
-    pub fn push_fn(&mut self, fun: Fn<'gc>) {
-        self.0.push(Operand::Fn(fun))
+    pub fn push_fun(&mut self, fun: Fun<'gc>) {
+        self.0.push(Operand::Fun(fun))
     }
 
-    pub fn pop_fn(&mut self) -> Result<'gc, Fn<'gc>> {
+    pub fn pop_fun(&mut self) -> Result<'gc, Fun<'gc>> {
         use self::Operand::*;
 
         match self.0.pop() {
-            Some(Fn(fun)) => Ok(fun),
+            Some(Fun(fun)) => Ok(fun),
             Some(operand) => Err(Error::InvalidOperandKind {
-                expected: OperandKind::Fn,
+                expected: OperandKind::Fun,
                 received: operand.into(),
             }),
             None => Err(Error::EmptyOperandStack),
@@ -287,15 +287,15 @@ impl<'gc> OperandStack<'gc> {
 }
 
 pub enum Operand<'gc> {
-    Mod(Mod<'gc>),
-    Fn(Fn<'gc>),
+    Modu(Modu<'gc>),
+    Fun(Fun<'gc>),
     Value(Value<'gc>),
 }
 
 #[derive(Debug)]
 pub enum OperandKind {
-    Mod,
-    Fn,
+    Modu,
+    Fun,
     Value,
 }
 
@@ -304,20 +304,21 @@ impl<'gc> From<Operand<'gc>> for OperandKind {
         use self::OperandKind::*;
 
         match operand {
-            Operand::Mod(_) => Mod,
-            Operand::Fn(_) => Fn,
+            Operand::Modu(_) => Modu,
+            Operand::Fun(_) => Fun,
             Operand::Value(_) => Value,
         }
     }
 }
 
+// TODO: Check the display strings.
 impl fmt::Display for OperandKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use self::OperandKind::*;
 
         match self {
-            Mod => write!(f, "mod"),
-            Fn => write!(f, "fn"),
+            Modu => write!(f, "mod"),
+            Fun => write!(f, "fn"),
             Value => write!(f, "value"),
         }
     }
@@ -329,7 +330,7 @@ mod tests {
     use eko_gc::Arena;
 
     use crate::compiler::generator::ChunkBuilder;
-    use crate::core::fun::{External, Fn};
+    use crate::core::fun::{External, Fun};
     use crate::core::instr::Instr;
     use crate::core::value::Value;
     use crate::engine::frame::Frame;
@@ -383,7 +384,7 @@ mod tests {
         let chunk = chunk.build(&arena);
 
         machine.push_value(Value::Integer(2));
-        machine.push_fn(Fn::new_chunk(&arena, 0, chunk));
+        machine.push_fun(Fun::new_chunk(&arena, 0, chunk));
         machine.call(0, false).unwrap();
 
         assert_eq!(
@@ -399,7 +400,7 @@ mod tests {
 
         let external = External::new(&arena, |_| Value::Integer(7));
 
-        machine.push_fn(Fn::new_external(&arena, 0, external));
+        machine.push_fun(Fun::new_external(&arena, 0, external));
         machine.call(0, false).unwrap();
 
         assert_eq!(
