@@ -11,6 +11,10 @@ pub enum Error<'gc> {
     #[error(display = "invalid field: {}", _0)]
     InvalidField { field: Ident<'gc> },
 
-    #[error(display = "invalid kind: expected {}, received {}", expected, received)]
+    #[error(
+        display = "invalid kind: expected {}, received {}",
+        expected,
+        received
+    )]
     InvalidKind { expected: Kind, received: Kind },
 }

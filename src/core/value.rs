@@ -2,11 +2,14 @@ use std::collections::BTreeMap;
 
 use eko_gc::{Arena, Gc, RefCell};
 
+use crate::engine::frame::CapturedScope;
+
 use super::error::{Error, Result};
+use super::fun::Fn;
 use super::ident::Ident;
 use super::typ::{self, Kind};
 
-#[derive(Clone, Trace)]
+#[derive(Clone, Debug, PartialEq, Trace)]
 pub enum Value<'gc> {
     Boolean(bool),
     Integer(i64),
@@ -15,12 +18,19 @@ pub enum Value<'gc> {
     Tuple(Tuple<'gc>),
     Struct(Struct<'gc>),
     Enum(Enum<'gc>),
+    Closure(Closure<'gc>),
 }
 
-#[derive(Clone, Trace)]
+#[derive(Clone, Debug, Trace)]
 pub struct String<'gc>(Gc<'gc, RefCell<'gc, std::string::String>>);
 
-#[derive(Clone, Trace)]
+impl<'gc> PartialEq for String<'gc> {
+    fn eq(&self, other: &String<'gc>) -> bool {
+        Gc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+#[derive(Clone, Debug, Trace)]
 pub struct Tuple<'gc>(Gc<'gc, RefCell<'gc, TupleData<'gc>>>);
 
 impl<'gc> Tuple<'gc> {
@@ -37,7 +47,13 @@ impl<'gc> Tuple<'gc> {
     }
 }
 
-#[derive(Trace)]
+impl<'gc> PartialEq for Tuple<'gc> {
+    fn eq(&self, other: &Tuple<'gc>) -> bool {
+        Gc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+#[derive(Debug, Trace)]
 pub struct TupleData<'gc> {
     fields: Vec<Value<'gc>>,
 }
@@ -55,16 +71,15 @@ impl<'gc> TupleData<'gc> {
     }
 
     fn field(&self, field: u8) -> Result<'gc, Value<'gc>> {
-        self.fields
-            .get(field as usize)
-            .cloned()
-            .ok_or_else(|| Error::InvalidField {
+        self.fields.get(field as usize).cloned().ok_or_else(|| {
+            Error::InvalidField {
                 field: Ident::new_number(field),
-            })
+            }
+        })
     }
 }
 
-#[derive(Clone, Trace)]
+#[derive(Clone, Debug, Trace)]
 pub struct Struct<'gc>(Gc<'gc, RefCell<'gc, StructData<'gc>>>);
 
 impl<'gc> Struct<'gc> {
@@ -108,11 +123,19 @@ impl<'gc> Struct<'gc> {
         }
     }
 
-    pub fn set_tuple_field(&self, field: u8, value: Value<'gc>) -> Result<'gc, ()> {
+    pub fn set_tuple_field(
+        &self,
+        field: u8,
+        value: Value<'gc>,
+    ) -> Result<'gc, ()> {
         self.0.borrow_mut().proto.set_tuple_field(field, value)
     }
 
-    pub fn set_map_field(&self, field: Ident<'gc>, value: Value<'gc>) -> Result<'gc, ()> {
+    pub fn set_map_field(
+        &self,
+        field: Ident<'gc>,
+        value: Value<'gc>,
+    ) -> Result<'gc, ()> {
         self.0.borrow_mut().proto.set_map_field(field, value)
     }
 
@@ -125,21 +148,35 @@ impl<'gc> Struct<'gc> {
     }
 }
 
-#[derive(Trace)]
+impl<'gc> PartialEq for Struct<'gc> {
+    fn eq(&self, other: &Struct<'gc>) -> bool {
+        Gc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+#[derive(Debug, Trace)]
 pub struct StructData<'gc> {
     typ: typ::Struct<'gc>,
     proto: StructProto<'gc>,
 }
 
-#[derive(Clone, Trace)]
+#[derive(Clone, Debug, Trace)]
 pub struct Enum<'gc>(Gc<'gc, RefCell<'gc, EnumData<'gc>>>);
 
 impl<'gc> Enum<'gc> {
-    pub fn set_tuple_field(&self, field: u8, value: Value<'gc>) -> Result<'gc, ()> {
+    pub fn set_tuple_field(
+        &self,
+        field: u8,
+        value: Value<'gc>,
+    ) -> Result<'gc, ()> {
         self.0.borrow_mut().proto.set_tuple_field(field, value)
     }
 
-    pub fn set_map_field(&self, field: Ident<'gc>, value: Value<'gc>) -> Result<'gc, ()> {
+    pub fn set_map_field(
+        &self,
+        field: Ident<'gc>,
+        value: Value<'gc>,
+    ) -> Result<'gc, ()> {
         self.0.borrow_mut().proto.set_map_field(field, value)
     }
 
@@ -152,21 +189,30 @@ impl<'gc> Enum<'gc> {
     }
 }
 
-#[derive(Trace)]
+impl<'gc> PartialEq for Enum<'gc> {
+    fn eq(&self, other: &Enum<'gc>) -> bool {
+        Gc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+#[derive(Debug, Trace)]
 pub struct EnumData<'gc> {
     typ: typ::Enum<'gc>,
     variant: u8,
     proto: StructProto<'gc>,
 }
 
-#[derive(Trace)]
+#[derive(Debug, Trace)]
 pub enum StructProto<'gc> {
     Tuple(TupleData<'gc>),
     Map(MapData<'gc>),
 }
 
 impl<'gc> StructProto<'gc> {
-    fn new_tuple(num_fields: u8, fields: Vec<Value<'gc>>) -> Result<'gc, StructProto<'gc>> {
+    fn new_tuple(
+        num_fields: u8,
+        fields: Vec<Value<'gc>>,
+    ) -> Result<'gc, StructProto<'gc>> {
         if num_fields > fields.len() as u8 {
             Err(Error::MissingField {
                 field: Ident::new_number(fields.len() as u8),
@@ -205,9 +251,15 @@ impl<'gc> StructProto<'gc> {
         Ok(StructProto::Map(MapData { fields }))
     }
 
-    fn set_tuple_field(&mut self, field: u8, value: Value<'gc>) -> Result<'gc, ()> {
+    fn set_tuple_field(
+        &mut self,
+        field: u8,
+        value: Value<'gc>,
+    ) -> Result<'gc, ()> {
         match self {
-            StructProto::Tuple(tuple_data) => tuple_data.set_field(field, value),
+            StructProto::Tuple(tuple_data) => {
+                tuple_data.set_field(field, value)
+            }
             StructProto::Map(_) => Err(Error::InvalidKind {
                 expected: Kind::Map,
                 received: Kind::Tuple,
@@ -215,7 +267,11 @@ impl<'gc> StructProto<'gc> {
         }
     }
 
-    fn set_map_field(&mut self, field: Ident<'gc>, value: Value<'gc>) -> Result<'gc, ()> {
+    fn set_map_field(
+        &mut self,
+        field: Ident<'gc>,
+        value: Value<'gc>,
+    ) -> Result<'gc, ()> {
         match self {
             StructProto::Tuple(_) => Err(Error::InvalidKind {
                 expected: Kind::Tuple,
@@ -246,13 +302,17 @@ impl<'gc> StructProto<'gc> {
     }
 }
 
-#[derive(Trace)]
+#[derive(Debug, Trace)]
 pub struct MapData<'gc> {
     fields: BTreeMap<Ident<'gc>, Value<'gc>>,
 }
 
 impl<'gc> MapData<'gc> {
-    pub fn set_field(&mut self, field: Ident<'gc>, value: Value<'gc>) -> Result<'gc, ()> {
+    pub fn set_field(
+        &mut self,
+        field: Ident<'gc>,
+        value: Value<'gc>,
+    ) -> Result<'gc, ()> {
         if self.fields.get(&field).is_some() {
             self.fields.insert(field, value);
             Ok(())
@@ -267,4 +327,25 @@ impl<'gc> MapData<'gc> {
             .cloned()
             .ok_or_else(|| Error::InvalidField { field })
     }
+}
+
+#[derive(Clone, Debug, Trace)]
+pub struct Closure<'gc>(Gc<'gc, ClosureData<'gc>>);
+
+impl<'gc> Closure<'gc> {
+    pub fn captured_scope(&self) -> CapturedScope<'gc> {
+        self.0.captured_scope.clone()
+    }
+}
+
+impl<'gc> PartialEq for Closure<'gc> {
+    fn eq(&self, other: &Closure<'gc>) -> bool {
+        Gc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+#[derive(Debug, Trace)]
+pub struct ClosureData<'gc> {
+    captured_scope: CapturedScope<'gc>,
+    data: Fn<'gc>,
 }
