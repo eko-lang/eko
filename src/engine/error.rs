@@ -1,6 +1,8 @@
+use std::fmt;
+
 use crate::core::ident::Ident;
 
-use super::machine::OperandKind;
+use super::machine::Operand;
 
 pub type Result<'gc, T> = std::result::Result<T, Error<'gc>>;
 
@@ -34,4 +36,39 @@ pub enum Error<'gc> {
 
     #[error(display = "variable not found: {}", var)]
     VarNotFound { var: usize },
+}
+
+#[derive(Debug)]
+pub enum OperandKind {
+    Modu,
+    Fun,
+    Method,
+    Value,
+}
+
+impl<'gc> From<Operand<'gc>> for OperandKind {
+    fn from(operand: Operand<'gc>) -> OperandKind {
+        use self::OperandKind::*;
+
+        match operand {
+            Operand::Modu(_) => Modu,
+            Operand::Fun(_) => Fun,
+            Operand::Method(_) => Method,
+            Operand::Value(_) => Value,
+        }
+    }
+}
+
+// TODO: Check the display strings.
+impl fmt::Display for OperandKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::OperandKind::*;
+
+        match self {
+            Modu => write!(f, "module"),
+            Fun => write!(f, "function"),
+            Method => write!(f, "method"),
+            Value => write!(f, "value"),
+        }
+    }
 }

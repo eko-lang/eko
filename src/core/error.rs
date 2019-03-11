@@ -1,5 +1,6 @@
+use std::fmt;
+
 use super::ident::Ident;
-use super::typ::Kind;
 
 pub type Result<'gc, T> = std::result::Result<T, Error<'gc>>;
 
@@ -15,9 +16,29 @@ pub enum Error<'gc> {
     InvalidField { ident: Ident<'gc> },
 
     #[error(
-        display = "invalid kind: expected {}, received {}",
+        display = "invalid type kind: expected {}, received {}",
         expected,
         received
     )]
-    InvalidKind { expected: Kind, received: Kind },
+    InvalidTypeKind {
+        expected: TypeKind,
+        received: TypeKind,
+    },
+}
+
+#[derive(Debug)]
+pub enum TypeKind {
+    Tuple,
+    Map,
+}
+
+impl fmt::Display for TypeKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::TypeKind::*;
+
+        match self {
+            Tuple => write!(f, "tuple"),
+            Map => write!(f, "map"),
+        }
+    }
 }

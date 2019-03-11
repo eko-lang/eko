@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::fmt;
 
 use eko_gc::{Gc, Ref, RefCell};
 
@@ -85,20 +84,5 @@ pub struct MapData<'gc> {
 impl<'gc> MapData<'gc> {
     pub fn fields(&self) -> &BTreeMap<Ident<'gc>, ()> {
         &self.fields
-    }
-}
-
-#[derive(Debug)]
-pub enum Kind {
-    Tuple,
-    Map,
-}
-
-impl fmt::Display for Kind {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Kind::Tuple => write!(f, "tuple"),
-            Kind::Map => write!(f, "map"),
-        }
     }
 }

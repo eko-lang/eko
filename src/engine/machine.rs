@@ -1,5 +1,4 @@
 use std::convert::{TryFrom, TryInto};
-use std::fmt;
 
 use eko_gc::Arena;
 
@@ -8,7 +7,7 @@ use crate::core::instr::Instr;
 use crate::core::modu::Modu;
 use crate::core::value::Value;
 
-use super::error::{Error, Result};
+use super::error::{Error, OperandKind, Result};
 use super::frame::Frame;
 
 pub struct Machine<'a, 'gc> {
@@ -328,41 +327,6 @@ impl<'gc> TryFrom<Operand<'gc>> for Value<'gc> {
 
 #[derive(Debug, Trace)]
 pub struct Method<'gc>(Fun<'gc>);
-
-#[derive(Debug)]
-pub enum OperandKind {
-    Modu,
-    Fun,
-    Method,
-    Value,
-}
-
-impl<'gc> From<Operand<'gc>> for OperandKind {
-    fn from(operand: Operand<'gc>) -> OperandKind {
-        use self::OperandKind::*;
-
-        match operand {
-            Operand::Modu(_) => Modu,
-            Operand::Fun(_) => Fun,
-            Operand::Method(_) => Method,
-            Operand::Value(_) => Value,
-        }
-    }
-}
-
-// TODO: Check the display strings.
-impl fmt::Display for OperandKind {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use self::OperandKind::*;
-
-        match self {
-            Modu => write!(f, "mod"),
-            Fun => write!(f, "fn"),
-            Method => write!(f, "method"),
-            Value => write!(f, "value"),
-        }
-    }
-}
 
 // TODO: Remove all the `unwrap`s.
 #[cfg(test)]

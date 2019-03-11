@@ -4,10 +4,10 @@ use eko_gc::{Arena, Gc, RefCell};
 
 use crate::engine::frame::CapturedScope;
 
-use super::error::{Error, Result};
+use super::error::{Error, Result, TypeKind};
 use super::fun::Fun;
 use super::ident::Ident;
-use super::typ::{self, Kind};
+use super::typ;
 
 #[derive(Clone, Debug, PartialEq, Trace)]
 pub enum Value<'gc> {
@@ -103,9 +103,9 @@ impl<'gc> Struct<'gc> {
                 };
                 Ok(Struct(Gc::new(&arena, RefCell::new(&arena, data))))
             }
-            typ::StructProto::Map(_) => Err(Error::InvalidKind {
-                expected: Kind::Tuple,
-                received: Kind::Map,
+            typ::StructProto::Map(_) => Err(Error::InvalidTypeKind {
+                expected: TypeKind::Tuple,
+                received: TypeKind::Map,
             }),
         }
     }
@@ -116,9 +116,9 @@ impl<'gc> Struct<'gc> {
         fields: BTreeMap<Ident<'gc>, Value<'gc>>,
     ) -> Result<'gc, Struct<'gc>> {
         match *typ.proto() {
-            typ::StructProto::Tuple(_) => Err(Error::InvalidKind {
-                expected: Kind::Map,
-                received: Kind::Tuple,
+            typ::StructProto::Tuple(_) => Err(Error::InvalidTypeKind {
+                expected: TypeKind::Map,
+                received: TypeKind::Tuple,
             }),
             typ::StructProto::Map(ref map_data) => {
                 let data = StructData {
@@ -267,9 +267,9 @@ impl<'gc> StructProto<'gc> {
             StructProto::Tuple(tuple_data) => {
                 tuple_data.set_field(field, value)
             }
-            StructProto::Map(_) => Err(Error::InvalidKind {
-                expected: Kind::Map,
-                received: Kind::Tuple,
+            StructProto::Map(_) => Err(Error::InvalidTypeKind {
+                expected: TypeKind::Map,
+                received: TypeKind::Tuple,
             }),
         }
     }
@@ -280,9 +280,9 @@ impl<'gc> StructProto<'gc> {
         value: Value<'gc>,
     ) -> Result<'gc, ()> {
         match self {
-            StructProto::Tuple(_) => Err(Error::InvalidKind {
-                expected: Kind::Tuple,
-                received: Kind::Map,
+            StructProto::Tuple(_) => Err(Error::InvalidTypeKind {
+                expected: TypeKind::Tuple,
+                received: TypeKind::Map,
             }),
             StructProto::Map(map_data) => map_data.set_field(field, value),
         }
@@ -291,18 +291,18 @@ impl<'gc> StructProto<'gc> {
     fn tuple_field(&self, field: u8) -> Result<'gc, Value<'gc>> {
         match self {
             StructProto::Tuple(tuple_data) => tuple_data.field(field),
-            StructProto::Map(_) => Err(Error::InvalidKind {
-                expected: Kind::Map,
-                received: Kind::Tuple,
+            StructProto::Map(_) => Err(Error::InvalidTypeKind {
+                expected: TypeKind::Map,
+                received: TypeKind::Tuple,
             }),
         }
     }
 
     fn map_field(&self, field: Ident<'gc>) -> Result<'gc, Value<'gc>> {
         match self {
-            StructProto::Tuple(_) => Err(Error::InvalidKind {
-                expected: Kind::Tuple,
-                received: Kind::Map,
+            StructProto::Tuple(_) => Err(Error::InvalidTypeKind {
+                expected: TypeKind::Tuple,
+                received: TypeKind::Map,
             }),
             StructProto::Map(map_data) => map_data.field(field),
         }
