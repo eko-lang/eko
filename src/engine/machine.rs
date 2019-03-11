@@ -75,8 +75,8 @@ impl<'a, 'gc> Machine<'a, 'gc> {
                 PushFn { fun } => self.push_fn(fun),
                 Pop => self.pop().map(|_| ())?,
 
-                PushVar { var } => self.push_var(&frame, var)?,
-                PopVar { var } => self.pop_var(&frame, var)?,
+                LoadVar { var } => self.load_var(&frame, var)?,
+                StoreVar { var } => self.store_var(&frame, var)?,
 
                 Add => self.add()?,
                 Subtract => self.subtract()?,
@@ -115,7 +115,7 @@ impl<'a, 'gc> Machine<'a, 'gc> {
         self.operand_stack.pop_value().map(|_| ())
     }
 
-    pub fn push_var(
+    pub fn load_var(
         &mut self,
         frame: &Frame<'gc>,
         var: usize,
@@ -124,7 +124,7 @@ impl<'a, 'gc> Machine<'a, 'gc> {
         Ok(self.operand_stack.push_value(value))
     }
 
-    pub fn pop_var(
+    pub fn store_var(
         &mut self,
         frame: &Frame<'gc>,
         var: usize,
@@ -360,8 +360,8 @@ mod tests {
         let frame = Frame::new(&arena, chunk);
 
         machine.push_value(Value::Integer(2));
-        machine.pop_var(&frame, var).unwrap();
-        machine.push_var(&frame, var).unwrap();
+        machine.store_var(&frame, var).unwrap();
+        machine.load_var(&frame, var).unwrap();
 
         assert_eq!(
             machine.operand_stack.pop_value().unwrap(),

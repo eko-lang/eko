@@ -9,8 +9,8 @@ pub enum Instr<'gc> {
     PushFn { fun: Fn<'gc> },
     Pop,
 
-    PushVar { var: usize },
-    PopVar { var: usize },
+    LoadVar { var: usize },
+    StoreVar { var: usize },
 
     Add,
     Subtract,
