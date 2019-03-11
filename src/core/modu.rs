@@ -30,6 +30,10 @@ impl<'gc> Mod<'gc> {
             ),
         ))
     }
+
+    pub fn fun(&self, ident: &Ident<'gc>) -> Option<Fn<'gc>> {
+        self.0.borrow().fun(ident)
+    }
 }
 
 #[derive(Debug, Trace)]
@@ -38,6 +42,7 @@ pub struct ModData<'gc> {
     parent_mod: Option<Mod<'gc>>,
     child_mods: BTreeMap<Ident<'gc>, Mod<'gc>>,
     types: BTreeMap<Ident<'gc>, Type<'gc>>,
+    fns: BTreeMap<Ident<'gc>, Fn<'gc>>,
 }
 
 impl<'gc> ModData<'gc> {
@@ -47,6 +52,7 @@ impl<'gc> ModData<'gc> {
             parent_mod: None,
             child_mods: BTreeMap::new(),
             types: BTreeMap::new(),
+            fns: BTreeMap::new(),
         }
     }
 
@@ -59,6 +65,11 @@ impl<'gc> ModData<'gc> {
             parent_mod: Some(parent_mod),
             child_mods: BTreeMap::new(),
             types: BTreeMap::new(),
+            fns: BTreeMap::new(),
         }
+    }
+
+    fn fun(&self, ident: &Ident<'gc>) -> Option<Fn<'gc>> {
+        self.fns.get(ident).cloned()
     }
 }

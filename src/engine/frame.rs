@@ -121,8 +121,11 @@ impl<'gc> Scope<'gc> {
     pub fn new(arena: &Arena<'gc>, len: usize) -> Scope<'gc> {
         Scope(Gc::new(
             arena,
-            // TODO: Figure out how to represent `None`.
-            RefCell::new(arena, vec![Value::Boolean(false); len]),
+            RefCell::new(
+                arena,
+                // TODO: This is cloning the `Option`.
+                vec![Value::empty(arena); len],
+            ),
         ))
     }
 

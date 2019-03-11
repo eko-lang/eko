@@ -73,10 +73,11 @@ impl<'a, 'gc> Machine<'a, 'gc> {
                 PushValue { value } => self.push_value(value),
                 PushMod { modu } => self.push_mod(modu),
                 PushFn { fun } => self.push_fn(fun),
-                Pop => self.pop().map(|_| ())?,
 
                 LoadVar { var } => self.load_var(&frame, var)?,
                 StoreVar { var } => self.store_var(&frame, var)?,
+
+                Pop => self.pop().map(|_| ())?,
 
                 Add => self.add()?,
                 Subtract => self.subtract()?,
@@ -111,10 +112,6 @@ impl<'a, 'gc> Machine<'a, 'gc> {
         self.operand_stack.push_fn(fun);
     }
 
-    pub fn pop(&mut self) -> Result<'gc, ()> {
-        self.operand_stack.pop_value().map(|_| ())
-    }
-
     pub fn load_var(
         &mut self,
         frame: &Frame<'gc>,
@@ -131,6 +128,10 @@ impl<'a, 'gc> Machine<'a, 'gc> {
     ) -> Result<'gc, ()> {
         let value = self.operand_stack.pop_value()?;
         frame.local_scope().set(var, value)
+    }
+
+    pub fn pop(&mut self) -> Result<'gc, ()> {
+        self.operand_stack.pop_value().map(|_| ())
     }
 
     pub fn add(&mut self) -> Result<'gc, ()> {

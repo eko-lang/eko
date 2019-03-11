@@ -18,7 +18,14 @@ pub enum Value<'gc> {
     Tuple(Tuple<'gc>),
     Struct(Struct<'gc>),
     Enum(Enum<'gc>),
+    Option(Option<'gc>),
     Closure(Closure<'gc>),
+}
+
+impl<'gc> Value<'gc> {
+    pub fn empty(arena: &Arena<'gc>) -> Value<'gc> {
+        Value::Option(Option::new_none(arena))
+    }
 }
 
 #[derive(Clone, Debug, Trace)]
@@ -327,6 +334,28 @@ impl<'gc> MapData<'gc> {
             .cloned()
             .ok_or_else(|| Error::InvalidField { field })
     }
+}
+
+#[derive(Clone, Debug, Trace)]
+pub struct Option<'gc>(Gc<'gc, RefCell<'gc, OptionData<'gc>>>);
+
+impl<'gc> Option<'gc> {
+    pub fn new_none(arena: &Arena<'gc>) -> Option<'gc> {
+        Option(Gc::new(&arena, RefCell::new(&arena, OptionData::None)))
+    }
+}
+
+// TODO: Determine if this is intended behaviour.
+impl<'gc> PartialEq for Option<'gc> {
+    fn eq(&self, other: &Option<'gc>) -> bool {
+        Gc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+#[derive(Debug, Trace)]
+pub enum OptionData<'gc> {
+    Some(Value<'gc>),
+    None,
 }
 
 #[derive(Clone, Debug, Trace)]
